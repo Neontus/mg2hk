@@ -142,3 +142,4 @@ cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
 cv2.imshow("Image Alignment Stacked", stacked)
 cv2.imshow("Image Alignment Overlay", output)
 cv2.waitKey(0)
+

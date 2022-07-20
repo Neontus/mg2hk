@@ -65,9 +65,10 @@ def load_aia(aia_folder, from_iris):
     ax.imshow(img_data_list[0][dim_aia[0]-1,yc-hiris:yc+hiris, xc-wiris:xc+wiris,]>103, origin='lower', cmap = 'afmhot')
     saveblank('aia_ready')
 
-    
+
 #aligning function
-def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = False):
+def align_images(image, template, maxFeatures=500, debug = False, 
+                num_max_points=3):
     # convert to greyscale
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     templateGray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -83,11 +84,13 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = Fals
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
     
+    
     good = []
     for m,n in matches:
         if m.distance < 0.75*n.distance:
             good.append([m])
-    good = sorted(good, key = lambda x: x[0].distance)[:3]
+    good = sorted(good, key = lambda x: x[0].distance)[:num_max_points]
+    matches = sorted(matches, key = lambda x: x[0].distance)[:num_max_points]
     
     ptsA = np.zeros((len(matches), 2), dtype="float")
     ptsB = np.zeros((len(matches), 2), dtype="float")
@@ -98,8 +101,10 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = Fals
         
     ptsA = ptsA.astype(np.float32)
     ptsB = ptsB.astype(np.float32)
-    tra = cv2.getAffineTransform(ptsA[:3], ptsB[:3])
-    inversetra = cv2.invertAffineTransform(tra)
+    M = cv2.estimateAffinePartial2D(ptsA[:num_max_points], ptsB[:num_max_points], False)
+    #print(M)
+    #print("ESTIMATE: ", M[0].shape)
+    inversetra = cv2.invertAffineTransform(M[0])
     (h, w) = template.shape[:2]
     
     
@@ -114,7 +119,7 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = Fals
         
         #matching points
         matchedVis = cv2.drawMatchesKnn(blur(image), kpsA, blur(template), kpsB,
-            good, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         matchedVis = imutils.resize(matchedVis, width=1000)
         cv2.imshow("Matched Keypoints", matchedVis)
         cv2.waitKey(0)
@@ -122,7 +127,7 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = Fals
     
         #adjusted box
         
-        #print("inverse matrix: ", inversetra)
+        print("inverse matrix: ", inversetra)
 
         newa, newb, newc, newd = applyAffine(a, inversetra), applyAffine(b, inversetra), applyAffine(c, inversetra), applyAffine(d, inversetra)
 
@@ -137,12 +142,12 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2, debug = Fals
     cv2.imshow("PLEASE WORK", polygoned)
     cv2.waitKey(0)
     
-    aligned = cv2.warpAffine(image, tra, (w, h))
+    aligned = cv2.warpAffine(image, M[0], (w, h))
     
-    aligned_color = cv2.warpAffine(color_aia, tra, (w, h))
+    aligned_color = cv2.warpAffine(color_aia, M[0], (w, h))
     print("RESULT SHAPE: ", aligned_color.shape)
     
-    cv2.imwrite('/Users/jkim/Desktop/mg2hk/output/aligned_colorf.png', aligned_color)
+    cv2.imwrite('/Users/jkim/Desktop/mg2hk/output/cut_aligned_colorf.png', aligned_color)
     
     # return the aligned image
     return aligned
@@ -158,10 +163,8 @@ def applyAffine(point, affine):
     
 #gaussian blur function
 def blur(image):
-    dst = cv2.blur(image, (20, 20))
+    dst = cv2.blur(image, (16, 16))
     return dst
-
-
 
 
 ap = argparse.ArgumentParser()
@@ -178,11 +181,15 @@ template = cv2.imread(outpath + "iris_ready.png")
 
 # align the images
 print("[INFO] aligning images...")
-aligned = align_images(image, template, maxFeatures = 50, keepPercent = 0.2, debug = True)
+aligned = align_images(image, template, maxFeatures = 150, debug = True, num_max_points=50)
 
 aligned = imutils.resize(aligned, width=700)
 template = imutils.resize(template, width=700)
 stacked = np.hstack([aligned, template])
+
+
+color_path = '/Users/jkim/Desktop/mg2hk/output/aia_color_to_align.png'
+color_aia = cv2.imread(color_path)
 
 
 overlay = template.copy()
