@@ -3,8 +3,7 @@ import numpy as np
 import imutils
 import cv2
 
-color_path = '/Users/jkim/Desktop/mg2hk/output/aia_color_to_align.png'
-color_aia = cv2.imread(color_path)
+
 
 #aligning function
 def align_images(image, template, maxFeatures=500, debug = False, 
@@ -87,7 +86,7 @@ def align_images(image, template, maxFeatures=500, debug = False,
     aligned_color = cv2.warpAffine(color_aia, M[0], (w, h))
     print("RESULT SHAPE: ", aligned_color.shape)
     
-    cv2.imwrite('/Users/jkim/Desktop/mg2hk/output/cut_aligned_colorf.png', aligned_color)
+    cv2.imwrite(outpath, aligned_color)
     
     # return the aligned image
     return aligned
@@ -119,10 +118,17 @@ ap.add_argument("-i", "--image", required=True,
 	help="path to input image that we'll align to template")
 ap.add_argument("-t", "--template", required=True,
 	help="path to input template image")
+ap.add_argument("-c", "--color", required=True,
+	help="path to colored AIA")
+ap.add_argument("-o", "--output", required=True,
+    help="path of result")
 args = vars(ap.parse_args())
 print("[INFO] loading images...")
+
+color_aia = cv2.imread(args["color"])
 image = cv2.imread(args["image"])
 template = cv2.imread(args["template"])
+outpath = args["output"]
 # align the images
 print("[INFO] aligning images...")
 aligned = align_images(image, template, maxFeatures = 150, debug = True, num_max_points=50)
