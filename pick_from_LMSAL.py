@@ -53,6 +53,7 @@ def obsid_raster2aia(obsid, raster=0, pattern=''):
 
     dir_at_lmsal ='/irisa/data/level2/{}/{}/{}/{}/aia/'.format(yy,mm,dd,obsid)
     #print('/irisa/data/level2/{}/{}/{}/'.format(yy,mm,dd))
+    print(dir_at_lmsal)	
 
     out = find.find(dir_at_lmsal, 'aia*{0}*{1}*.fits'.format(obsid, pattern))
 
