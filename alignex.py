@@ -60,7 +60,7 @@ def align_images(image, template, numkp):
     aligned_color = cv2.warpAffine(color_aia, M[0], (w, h))
     print("RESULT SHAPE: ", aligned_color.shape)
     
-    cv2.imwrite('/Users/jkim/Desktop/mg2hk/output/aligned_colorf.png', aligned_color)
+    cv2.imwrite('/Users/jkim/Desktop/mg2hk/output/coord_manual.png', aligned_color)
     
     # return the aligned image
     return aligned, aligned_color
@@ -128,7 +128,7 @@ cv2.destroyAllWindows()
 print("[UPDATE]: how many keypoints - ", len(kpsi), len(kpsa))
 
 #to apply to color version
-color_path = '/Users/jkim/Desktop/mg2hk/output/aia_color.png'
+color_path = '/Users/jkim/Desktop/mg2hk/output/aia_color_coord.png'
 color_aia = cv2.imread(color_path)
 
 # align the images
@@ -136,11 +136,11 @@ print("[CHECKPOINT] aligning images...")
 aligned, color_aligned = align_images(image, template, len(kpsi))
 
 #for evaluating correlation
-iris_color_path = '/Users/jkim/Desktop/mg2hk/output/iris_to_align_color.png'
-color_iris = cv2.imread(iris_color_path)
+#iris_color_path = '/Users/jkim/Desktop/mg2hk/output/iris_to_align_color.png'
+#color_iris = cv2.imread(iris_color_path)
 
 #correlation
-evaluate(color_aligned, color_iris)
+#evaluate(color_aligned, color_iris)
 
 aligned = imutils.resize(aligned, width=700)
 template = imutils.resize(template, width=700)

@@ -3,20 +3,23 @@ import numpy as np
 import imutils
 import cv2
 
+#params
+#aia, iris, DEBUG, maxFeatures, num_max_points
+
 #aligning function
-def align_images(image, template, maxFeatures=500, debug = False, 
+def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False, 
                 num_max_points=3):
     # convert to greyscale
-    imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    templateGray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    aiaGray = cv2.cvtColor(aia, cv2.COLOR_BGR2GRAY)
+    irisGray = cv2.cvtColor(iris, cv2.COLOR_BGR2GRAY)
     
-    blurredImage = blur(imageGray)
-    blurredTemplate = blur(templateGray)
+    blurredaia = blur(aiaGray)
+    blurrediris = blur(irisGray)
     print("blurred images")
     
     sift = cv2.SIFT_create()
-    kpsA, descsA = sift.detectAndCompute(blurredImage,None)
-    kpsB, descsB = sift.detectAndCompute(blurredTemplate,None)
+    kpsA, descsA = sift.detectAndCompute(blurredaia,None)
+    kpsB, descsB = sift.detectAndCompute(blurrediris,None)
     
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
@@ -34,7 +37,7 @@ def align_images(image, template, maxFeatures=500, debug = False,
     for (i, m) in enumerate(good):
         ptsA[i] = kpsA[m[0].queryIdx].pt
         ptsB[i] = kpsB[m[0].trainIdx].pt
-        
+    
         
     ptsA = ptsA.astype(np.float32)
     ptsB = ptsB.astype(np.float32)
@@ -42,7 +45,7 @@ def align_images(image, template, maxFeatures=500, debug = False,
     #print(M)
     #print("ESTIMATE: ", M[0].shape)
     inversetra = cv2.invertAffineTransform(M[0])
-    (h, w) = template.shape[:2]
+    (h, w) = iris.shape[:2]
     
     
     
@@ -50,12 +53,12 @@ def align_images(image, template, maxFeatures=500, debug = False,
         #bounding box
         a, b, c, d = (0,0), (w, 0), (w,h), (0, h)
         start, end = a, c
-        boxed = cv2.rectangle(image, start, end, (0,0,255) , 2)
-        cv2.imshow("bounding box", boxed)
-        cv2.waitKey(0)
+        # boxed = cv2.rectangle(aia, start, end, (0,0,255) , 2)
+        # cv2.imshow("bounding box", boxed)
+        # cv2.waitKey(0)
         
         #matching points
-        matchedVis = cv2.drawMatchesKnn(blur(image), kpsA, blur(template), kpsB,
+        matchedVis = cv2.drawMatchesKnn(blur(aia), kpsA, blur(iris), kpsB,
             matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         matchedVis = imutils.resize(matchedVis, width=1000)
         cv2.imshow("Matched Keypoints", matchedVis)
@@ -73,20 +76,20 @@ def align_images(image, template, maxFeatures=500, debug = False,
         newRectPoints = np.array([newa, newb, newc, newd], np.int32)
         newRectPoints = newRectPoints.reshape((-1, 1, 2))
     
-    print("image dimensions: ", image.shape)
+    print("aia dimensions: ", aia.shape)
     
-    polygoned = cv2.polylines(image, [newRectPoints], True, (0,0,255), 3)
+    polygoned = cv2.polylines(aia, [newRectPoints], True, (0,0,255), 3)
     cv2.imshow("PLEASE WORK", polygoned)
     cv2.waitKey(0)
     
-    aligned = cv2.warpAffine(image, M[0], (w, h))
+    aligned = cv2.warpAffine(aia, M[0], (w, h))
     
     aligned_color = cv2.warpAffine(color_aia, M[0], (w, h))
     print("RESULT SHAPE: ", aligned_color.shape)
     
     cv2.imwrite(outpath, aligned_color)
     
-    # return the aligned image
+    # return the aligned aia
     return aligned
 
 #solve affine transformation
@@ -104,46 +107,8 @@ def blur(image):
     return dst
 
 
-
 #visualizing
 import numpy as np
 import argparse
 import imutils
 import cv2
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", required=True,
-	help="path to input image that we'll align to template")
-ap.add_argument("-t", "--template", required=True,
-	help="path to input template image")
-ap.add_argument("-c", "--color", required=True,
-	help="path to colored AIA")
-ap.add_argument("-o", "--output", required=True,
-    help="path of result")
-args = vars(ap.parse_args())
-print("[INFO] loading images...")
-
-color_aia = cv2.imread(args["color"])
-image = cv2.imread(args["image"])
-template = cv2.imread(args["template"])
-outpath = args["output"]
-# align the images
-print("[INFO] aligning images...")
-aligned = align_images(image, template, maxFeatures = 150, debug = True, num_max_points=50)
-
-aligned = imutils.resize(aligned, width=700)
-template = imutils.resize(template, width=700)
-# our first output visualization of the image alignment will be a
-# side-by-side comparison of the output aligned image and the
-# template
-stacked = np.hstack([aligned, template])
-
-
-overlay = template.copy()
-output = aligned.copy()
-cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
-# show the two output image alignment visualizations
-cv2.imshow("Image Alignment Stacked", stacked)
-cv2.imshow("Image Alignment Overlay", output)
-cv2.waitKey(0)
-
