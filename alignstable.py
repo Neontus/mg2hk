@@ -103,8 +103,6 @@ def blur(image):
     dst = cv2.blur(image, (30, 30))
     return dst
 
-
-
 #visualizing
 import numpy as np
 import argparse
