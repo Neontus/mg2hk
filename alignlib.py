@@ -8,18 +8,18 @@ import cv2
 
 #aligning function
 def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False, 
-                num_max_points=3):
+                num_max_points=3, blurFilter = 30):
     # convert to greyscale
     aiaGray = cv2.cvtColor(aia, cv2.COLOR_BGR2GRAY)
     irisGray = cv2.cvtColor(iris, cv2.COLOR_BGR2GRAY)
     
-    blurredaia = blur(aiaGray)
-    blurrediris = blur(irisGray)
+    blurredaia = blur(aiaGray, blurFilter)
+    blurrediris = blur(irisGray, blurFilter)
     print("blurred images")
     
     sift = cv2.SIFT_create()
-    kpsA, descsA = sift.detectAndCompute(blurredaia,None)
-    kpsB, descsB = sift.detectAndCompute(blurrediris,None)
+    kpsA, descsA = sift.detectAndCompute(blurredaia, None)
+    kpsB, descsB = sift.detectAndCompute(blurrediris, None)
     
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
@@ -58,7 +58,7 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
         # cv2.waitKey(0)
         
         #matching points
-        matchedVis = cv2.drawMatchesKnn(blur(aia), kpsA, blur(iris), kpsB,
+        matchedVis = cv2.drawMatchesKnn(blurredaia, kpsA, blurrediris, kpsB,
             matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         matchedVis = imutils.resize(matchedVis, width=1000)
         cv2.imshow("Matched Keypoints", matchedVis)
@@ -102,9 +102,20 @@ def applyAffine(point, affine):
     return transformed
     
 #gaussian blur function
-def blur(image):
-    dst = cv2.blur(image, (30, 30))
+def blur(image, blur_filter):
+    dst = cv2.blur(image, (blur_filter, blur_filter))
     return dst
+
+#filtering with two thresholds
+def imgthr(image, lt, ut):
+    fl = image.copy().flatten()
+    for i, val in enumerate(fl):
+        if np.logical_and((val>lt), (val<ut)):
+            fl[i] = True
+        else:
+            fl[i] = False
+    
+    return np.reshape(fl, image.shape)
 
 
 #visualizing
