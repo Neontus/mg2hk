@@ -2,20 +2,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 import imutils
 import cv2
+from scipy.ndimage.filters import uniform_filter
+from scipy.ndimage.measurements import variance
+from iris_lmsalpy import saveall as sv
 
 #params
 #aia, iris, DEBUG, maxFeatures, num_max_points
 
 #aligning function
 def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False, 
-                num_max_points=3, blurFilter = 30):
+                num_max_points=3, blurFilter = 3):
+    
     # convert to greyscale
     aiaGray = cv2.cvtColor(aia, cv2.COLOR_BGR2GRAY)
     irisGray = cv2.cvtColor(iris, cv2.COLOR_BGR2GRAY)
     
-    blurredaia = blur(aiaGray, blurFilter)
-    blurrediris = blur(irisGray, blurFilter)
+    blurredaia = blur(aiaGray, 35)
+    blurrediris = blur(irisGray, 35)
     print("blurred images")
+    
+#     blurredaia = aiaGray.copy()
+#     blurrediris = irisGray.copy()
+    
+    fig, ax = plt.subplots(1, 2, figsize=[10,10])
+    ax[0].imshow(blurredaia)
+    ax[1].imshow(blurrediris)
+    plt.show()
+    print("SIZE AFTER BLUR", blurredaia.shape, blurrediris.shape)
+    
     
     sift = cv2.SIFT_create()
     kpsA, descsA = sift.detectAndCompute(blurredaia, None)
@@ -57,7 +71,7 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
         # cv2.imshow("bounding box", boxed)
         # cv2.waitKey(0)
         
-        #matching points
+        #matching keypoints
         matchedVis = cv2.drawMatchesKnn(blurredaia, kpsA, blurrediris, kpsB,
             matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         matchedVis = imutils.resize(matchedVis, width=1000)
@@ -66,7 +80,6 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
 
     
         #adjusted box
-        
         #print("inverse matrix: ", inversetra)
 
         newa, newb, newc, newd = applyAffine(a, inversetra), applyAffine(b, inversetra), applyAffine(c, inversetra), applyAffine(d, inversetra)
@@ -85,12 +98,13 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
     aligned = cv2.warpAffine(aia, M[0], (w, h))
     
     aligned_color = cv2.warpAffine(color_aia, M[0], (w, h))
+    sv.save('quepasa.jbl.gz', aligned_color, M, w, h)
     print("RESULT SHAPE: ", aligned_color.shape)
     
     cv2.imwrite(outpath, aligned_color)
     
     # return the aligned aia
-    return aligned
+    return aligned, M[0], w, h
 
 #solve affine transformation
 def applyAffine(point, affine):
@@ -103,7 +117,7 @@ def applyAffine(point, affine):
     
 #gaussian blur function
 def blur(image, blur_filter):
-    dst = cv2.blur(image, (blur_filter, blur_filter))
+    dst = cv2.GaussianBlur(image, (blur_filter, blur_filter), 0, 0)
     return dst
 
 #filtering with two thresholds
@@ -116,6 +130,40 @@ def imgthr(image, lt, ut):
             fl[i] = False
     
     return np.reshape(fl, image.shape)
+
+
+def conservative_smoothing_gray(data, filter_size):
+    temp = []
+    indexer = filter_size // 2
+    new_image = data.copy()
+    nrow, ncol = data.shape
+    for i in range(nrow):
+        for j in range(ncol):
+            for k in range(i-indexer, i+indexer+1):
+                for m in range(j-indexer, j+indexer+1):
+                    if (k > -1) and (k < nrow):
+                        if (m > -1) and (m < ncol):
+                            temp.append(data[k,m])
+            temp.remove(data[i,j])
+            max_value = max(temp)
+            min_value = min(temp)
+            if data[i,j] > max_value:
+                new_image[i,j] = max_value
+            elif data[i,j] < min_value:
+                new_image[i,j] = min_value
+            temp =[]
+    return new_image.copy()
+
+def lee_filter(img, size):
+    img_mean = uniform_filter(img, (size, size))
+    img_sqr_mean = uniform_filter(img**2, (size, size))
+    img_variance = img_sqr_mean - img_mean**2
+
+    overall_variance = variance(img)
+
+    img_weights = img_variance / (img_variance + overall_variance)
+    img_output = img_mean + img_weights * (img - img_mean)
+    return img_output
 
 
 #visualizing
