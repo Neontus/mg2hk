@@ -8,6 +8,7 @@ blur_filter = 15
 import os
 import numpy as np
 import scipy
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import imutils
@@ -26,6 +27,7 @@ import my_fits
 import saveblank as sb
 import alignlib
 
+matplotlib.use('TkAgg')
 
 print("-"*10, "[Section] Loading Data", "-"*10)
 #obsid, numraster = '20211015_051453_3600009176', 0
@@ -58,8 +60,9 @@ iris_raster = ei.load(iris_file[0])
 extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
 mgii = iris_raster.raster['Mg II k 2796'].data
 sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
-mgii = mgii[:-100,:,sel_wl]
-mgii = mgii.clip(75,300)
+limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
+mgii = mgii[:limit_mask,:,sel_wl]
+mgii = mgii.clip(75,400)
 
 # Scale IRIS to arcsec
 new_iris_shape = mgii.shape[0]*yscl_iris, mgii.shape[1]*xscl_iris
@@ -67,27 +70,58 @@ new_iris_data = rebin.congrid(mgii, new_iris_shape)
 
 hiris, wiris = new_iris_data.shape
 extent_iris = [xcen_iris-wiris/2,xcen_iris+wiris/2,ycen_iris-hiris/2,ycen_iris+hiris/2]
+print(extent_iris)
+extent_iris = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
+print(extent_iris)
 
 # Scale AIA to arcsec
 print("-"*10, "[Section] Reshaping AIA to IRIS", "-"*10)
 try_aia = aia_1600.shape[0]*yscl_aia, aia_1600.shape[1]*xscl_aia
 new_aia = rebin.congrid(aia_1600, try_aia)
 haia, waia = new_aia.shape
+print('AIA size', haia, waia)
 extent_aia = [xcen_aia[aia_middle_step]-waia/2,xcen_aia[aia_middle_step]+waia/2,ycen_aia[aia_middle_step]-haia/2,ycen_aia[aia_middle_step]+haia/2]
 
 # Cropping AIA to IRIS
 print("-"*10, "[Section] Cropping AIA to IRIS", "-"*10)
-acp = [(extent_iris[0]-5, extent_iris[3]+5), (extent_iris[0]-5, extent_iris[2]-5), (extent_iris[1]+5, extent_iris[3]+5), (extent_iris[1]+5, extent_iris[2]-5)]
-x_i = int(extent_iris[0]-5-extent_aia[0])
-x_f = int(extent_iris[1]+5-extent_aia[0])
-y_f = -int(extent_iris[3]+5-extent_aia[3])
-y_i = -int(extent_iris[2]-5-extent_aia[3])
+pad = 10
+acp = [(extent_iris[0]-pad, extent_iris[3]+pad), (extent_iris[0]-pad, extent_iris[2]-pad), (extent_iris[1]+pad, extent_iris[3]+pad), (extent_iris[1]+pad, extent_iris[2]-pad)]
+x_i = int(extent_iris[0]-pad-extent_aia[0])
+x_f = int(extent_iris[1]+pad-extent_aia[0])
+y_f = -int(extent_iris[3]+pad-extent_aia[3])
+y_i = -int(extent_iris[2]-pad-extent_aia[3])
 cut_aia = new_aia[y_f:y_i, x_i:x_f]
+print('Size cutout AIA', cut_aia.shape)
+print(cut_aia)
+print(cut_aia.dtype)
 
-fig, ax = plt.subplots(1, 2, figsize=[10, 10])
-ax[0].imshow(mgii, cmap='afmhot', origin='lower')
-ax[1].imshow(cut_aia, cmap='afmhot', origin='lower')
+cv_cut = (cut_aia*8).astype(np.uint8)
+print(cv_cut)
+print(cv_cut.dtype)
+
+
+
+cv_cut_f = cv2.applyColorMap(cv_cut, cv2.COLORMAP_HOT)
+
+fig, ax = plt.subplots(figsize=[5, 10])
+ax.imshow(cv_cut, cmap='afmhot')
+
+
+cv2.imshow("test", cv_cut_f)
+cv2.imshow("test2", new_iris_data)
+
 plt.show()
+cv2.waitKey(0)
+
+print(cv_cut.shape)
+print(cv_cut)
+print(cv_cut_f.shape)
+print(cv_cut_f)
+
+# fig, ax = plt.subplots(1, 2, figsize=[10, 10])
+# ax[0].imshow(cut_aia, cmap='afmhot', origin='lower')
+# ax[1].imshow(new_iris_data, cmap='afmhot', origin='lower')
+# plt.show()
 
 # # Decide Contrast for IRIS
 # iris_raster.quick_look()
@@ -97,7 +131,7 @@ plt.show()
 # Deciding Thresholds
 print("-"*10, "[Section] Decide Thresholds", "-"*10)
 AIA_THRESHOLD, IRIS_THRESHOLDH, IRIS_THRESHOLDL = 0, 100, 0
-iris_contrast_h, iris_contrast_l = 400, 75
+iris_vmax, iris_vmin = 400, 75
 fig, axs = plt.subplots(1, 2, figsize = [10, 10])
 aia_im = axs[0].imshow(cut_aia, cmap="afmhot", origin="lower")
 iris_im = axs[1].imshow(new_iris_data, cmap="afmhot", origin="lower")
@@ -108,7 +142,7 @@ plt.subplots_adjust(left=0.25, bottom=0.25)
 axaia = plt.axes([0.25, 0.1, 0.65, 0.03])
 axiris = plt.axes([0.25, 0.05, 0.65, 0.03])
 axblur = plt.axes([0.25, 0.15, 0.65, 0.03])
-axbtn = plt.axes([0.1, 0.000001, 0.1, 0.075])
+#axicon = plt.axes([0.25, 0.025, 0.65, 0.03])
 
 aia_slider = plt.Slider(
     ax=axaia,
@@ -120,7 +154,7 @@ aia_slider = plt.Slider(
 
 iris_slider = RangeSlider(
     ax=axiris,
-    label='IRIS vmin & vmax',
+    label='IRIS thresholds',
     valmin=0.1,
     valmax=600
 )
@@ -133,9 +167,6 @@ blur_slider = plt.Slider(
     valinit=0.1,
 )
 
-# blurtoggle = Button(axbtn, "Blur IRIS", color="blue")
-blurct = 0
-
 def update_aia(val):
     global AIA_THRESHOLD
     axs[0].imshow(cut_aia>val, origin="lower", cmap="afmhot")
@@ -144,56 +175,49 @@ def update_aia(val):
 
 def update_iris(val):
     global IRIS_THRESHOLDH, IRIS_THRESHOLDL
-    #axs[1].imshow(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), cmap='afmhot', origin="lower")
-    axs[1].imshow(new_iris_data, cmap='afmhot', origin="lower", vmin=val[0], vmax=val[1])
-    iris_contrast_h = val[1]
-    iris_contrast_l = val[0]
+    IRIS_THRESHOLDL = val[0]
+    IRIS_THRESHOLDH = val[1]
+    axs[1].imshow(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), origin="lower", cmap='afmhot')
+    #axs[1].imshow(new_iris_data, cmap='afmhot', origin="lower", vmin=val[0], vmax=val[1])
     fig.canvas.draw_idle()
     
 def blur_iris(val):
     global blur_filter
+    blur_filter = int(val)
     if val<1:
-        axs[1].imshow(new_iris_data, cmap='afmhot', origin="lower", vmin=iris_contrast_l, vmax=iris_contrast_h)
+        axs[1].imshow(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), cmap='afmhot', origin="lower")
         return
         
-    axs[1].imshow(alignlib.blur(new_iris_data, int(val)), cmap='gray', origin='lower')
-    blur_filter = val
+    axs[1].imshow(alignlib.lee_filter(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), int(val)), cmap='gray', origin='lower')
+
     fig.canvas.draw_idle()
-    
-# def bluriris(val):
-#     global blurct
-#     if blurct %2 == 0:    
-#         axs[1].imshow(alignlib.blur(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), blur_filter), cmap='gray', origin="lower")
-#         fig.canvas.draw_idle()
-#     else:
-#         axs[1].imshow(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), origin="lower", cmap="afmhot")
-#         fig.canvas.draw_idle()
-#     blurct+=1
     
 aia_slider.on_changed(update_aia)
 iris_slider.on_changed(update_iris)
 blur_slider.on_changed(blur_iris)
-# blurtoggle.on_clicked(bluriris)
 
 plt.show()
 
 
 # Prepare Images for Alignment
 print("-"*10, "[Section] Prepare Images for Alignment", "-"*10)
-# aia_thres = cut_aia>70
-# iris_thres = cropped_iris>12
-
 
 fig, ax = plt.subplots(figsize=[10,10])
 ax.imshow(cut_aia, cmap='afmhot', origin="lower")
+# cadata = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8,
+#             sep='')
+# cadata = cadata.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+# print(cadata.shape, cut_aia.shape)
+# print(cadata)
 sb.saveblank(outpath, "aia_color_gen_coord_"+OBSID)
 
 fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia>AIA_THRESHOLD, cmap='afmhot', origin="lower")
+# ax.imshow(alignlib.lee_filter((cut_aia>AIA_THRESHOLD)*1, blur_filter), cmap='afmhot', origin="lower")
+ax.imshow((cut_aia>AIA_THRESHOLD)*1, cmap='afmhot', origin="lower")
 sb.saveblank(outpath, "aia_gen_coord_"+OBSID)
 
 fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(alignlib.imgthr(cropped_iris, IRIS_THRESHOLDL, IRIS_THRESHOLDH), origin="lower", cmap="afmhot")
+ax.imshow(alignlib.lee_filter(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), blur_filter), origin="lower", cmap="afmhot")
 sb.saveblank(outpath, "iris_gen_coord_"+OBSID)
 
 color_aia_to_align = cv2.imread(outpath + "aia_color_gen_coord_{}.png".format(OBSID))
@@ -202,15 +226,28 @@ iris_to_align = cv2.imread(outpath + "iris_gen_coord_{}.png".format(OBSID))
 
 # Running Alignment
 print("-"*10, "[Section] Aligning Images", "-"*10)
-alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align,"/Users/jkim/Desktop/mg2hk/output/genresult_{}.png".format(OBSID), 30, True, 4, 30)
+
+aligned, matrix, walign, halign = alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align ,"/Users/jkim/Desktop/mg2hk/output/genresult_{}.png".format(OBSID), 150, True, 10, blur_filter)
 
 # Flickering
+def crop_image(img,tol=0):
+    # img is 2D or 3D image data
+    # tol  is tolerance
+    mask = img>tol
+    if img.ndim==3:
+        mask = mask.all(2)
+    m,n = mask.shape
+    mask0,mask1 = mask.any(0),mask.any(1)
+    col_start,col_end = mask0.argmax(),n-mask0[::-1].argmax()
+    row_start,row_end = mask1.argmax(),m-mask1[::-1].argmax()
+    return img[row_start:row_end,col_start:col_end]
+
 print("-"*10, "[Section] Flickering", "-"*10)
 outputpath = "/Users/jkim/Desktop/mg2hk/output/genresult_{}.png".format(OBSID)
 result = mpimg.imread(outputpath)
 new_result = result[:,:,0]
 newest = crop_image(new_result)
-reshaped_result = rebin.congrid(newest, cropped_iris.shape)
+reshaped_result = rebin.congrid(newest, new_iris_data.shape)
 fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 
 toggle=0
@@ -220,7 +257,7 @@ try:
         if (toggle%2 == 0):
             ax.imshow(reshaped_result, cmap="afmhot")
         else:
-            ax.imshow(cropped_iris, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
+            ax.imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
         display.display(fig)
         display.clear_output(wait = True)
         toggle += 1

@@ -3,7 +3,7 @@
 OBSID = '20220626_040436_3620108077'
 NUMRASTER = 0
 outpath = "/Users/jkim/Desktop/mg2hk/output/"
-blur_filter = 10
+blur_filter = 5
 
 import os
 import numpy as np
@@ -52,31 +52,72 @@ yscl_iris = aux_hdr_iris_data['CDELT2']
 xscl_aia = hdr_aia_1600['CDELT1']
 yscl_aia = hdr_aia_1600['CDELT2']
 
-# Shaping AIA
-print("-"*10, "[Section] Shaping AIA", "-"*10)
+# Mask + Crop IRIS
+print("-"*10, "[Section] IRIS Masking + Cropping + WL", "-"*10)
+iris_raster = ei.load(iris_file[0])
+extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
+mgii = iris_raster.raster['Mg II k 2796'].data
+sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
+limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
+mgii = mgii[:limit_mask,:,sel_wl]
+mgii = mgii.clip(75,400)
+
+# Scale IRIS to arcsec
+new_iris_shape = mgii.shape[0]*yscl_iris, mgii.shape[1]*xscl_iris
+new_iris_data = rebin.congrid(mgii, new_iris_shape)
+
+hiris, wiris = new_iris_data.shape
+extent_iris = [xcen_iris-wiris/2,xcen_iris+wiris/2,ycen_iris-hiris/2,ycen_iris+hiris/2]
+print(extent_iris)
+extent_iris = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
+print(extent_iris)
+
+# Scale AIA to arcsec
+print("-"*10, "[Section] Reshaping AIA to IRIS", "-"*10)
 try_aia = aia_1600.shape[0]*yscl_aia, aia_1600.shape[1]*xscl_aia
 new_aia = rebin.congrid(aia_1600, try_aia)
 haia, waia = new_aia.shape
+print('AIA size', haia, waia)
 extent_aia = [xcen_aia[aia_middle_step]-waia/2,xcen_aia[aia_middle_step]+waia/2,ycen_aia[aia_middle_step]-haia/2,ycen_aia[aia_middle_step]+haia/2]
 
-# Shaping IRIS
-print("-"*10, "[Section] Shaping IRIS", "-"*10)
-iris_raster = ei.load(iris_file[0])
-extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
-iris_data = iris_raster.raster['Mg II k 2796'].data
+# Cropping AIA to IRIS
+print("-"*10, "[Section] Cropping AIA to IRIS", "-"*10)
+pad = 10
+acp = [(extent_iris[0]-pad, extent_iris[3]+pad), (extent_iris[0]-pad, extent_iris[2]-pad), (extent_iris[1]+pad, extent_iris[3]+pad), (extent_iris[1]+pad, extent_iris[2]-pad)]
+x_i = int(extent_iris[0]-pad-extent_aia[0])
+x_f = int(extent_iris[1]+pad-extent_aia[0])
+y_f = -int(extent_iris[3]+pad-extent_aia[3])
+y_i = -int(extent_iris[2]-pad-extent_aia[3])
+cut_aia = new_aia[y_f:y_i, x_i:x_f]
+print('Size cutout AIA', cut_aia.shape)
+fig, ax = plt.subplots(1, 2, figsize=[10, 10])
+ax[0].imshow(cut_aia, cmap='afmhot', origin='lower')
+ax[1].imshow(new_iris_data, cmap='afmhot', origin='lower')
+plt.show()
 
-# Decide wavelength
-fig, ax = plt.subplots(figsize=[10, 5])
-ax.imshow(new_aia, cmap='afmhot', origin='lower')
-iris_raster.quick_look()
-iris_freq = int(iris_raster.raster['Mg II k 2796'].poi[0].z_pos_ori)
-iris_vmin, iris_vmax = iris_raster.raster['Mg II k 2796'].poi[0].clip_ima
+# Prepare Images for Alignment
+print("-"*10, "[Section] Prepare Images for Alignment", "-"*10)
+fig, ax = plt.subplots(figsize=[10,10])
+ax.imshow(cut_aia, cmap='afmhot', origin="lower")
+sb.saveblank(outpath, "ex_aia_color_gen_coord_"+OBSID)
 
-new_iris_shape = iris_data[:,:,iris_freq].shape[0]*yscl_iris, iris_data[:,:,iris_freq].shape[1]*xscl_iris
-new_iris_data = rebin.congrid(iris_data[:,:,iris_freq], new_iris_shape)
+fig, ax = plt.subplots(figsize=[10,10])
+ax.imshow(cut_aia, cmap='afmhot', origin="lower")
+sb.saveblank(outpath, "ex_aia_gen_coord_"+OBSID)
 
-# Cropping IRIS
-print("-"*10, "[Checkpoint] Cropping IRIS", "-"*10)
+fig, ax = plt.subplots(figsize=[10,10])
+ax.imshow(new_iris_data, origin="lower", cmap="afmhot")
+sb.saveblank(outpath, "ex_iris_gen_coord_"+OBSID)
+
+color_aia_to_align = cv2.imread(outpath + "ex_aia_color_gen_coord_{}.png".format(OBSID))
+aia_to_align = cv2.imread(outpath + "ex_aia_gen_coord_{}.png".format(OBSID))
+iris_to_align = cv2.imread(outpath + "ex_iris_gen_coord_{}.png".format(OBSID))
+
+# Running Alignment
+print("-"*10, "[Section] Aligning Images", "-"*10)
+alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align,"/Users/jkim/Desktop/mg2hk/output/ex_genresult_{}.png".format(OBSID), 150, True, 70, blur_filter)
+
+# Flickering
 def crop_image(img,tol=0):
     # img is 2D or 3D image data
     # tol  is tolerance
@@ -89,50 +130,12 @@ def crop_image(img,tol=0):
     row_start,row_end = mask1.argmax(),m-mask1[::-1].argmax()
     return img[row_start:row_end,col_start:col_end]
 
-cropped_iris = crop_image(new_iris_data)
-hiris, wiris = cropped_iris.shape
-extent_iris = [xcen_iris-wiris/2,xcen_iris+wiris/2,ycen_iris-hiris/2,ycen_iris+hiris/2]
-
-# Cutting AIA to IRIS
-print("-"*10, "[Section] Cutting AIA to IRIS shape", "-"*10)
-acp = [(extent_iris[0]-5, extent_iris[3]+5), (extent_iris[0]-5, extent_iris[2]-5), (extent_iris[1]+5, extent_iris[3]+5), (extent_iris[1]+5, extent_iris[2]-5)]
-x_i = int(extent_iris[0]-5-extent_aia[0])
-x_f = int(extent_iris[1]+5-extent_aia[0])
-y_f = -int(extent_iris[3]+5-extent_aia[3])
-y_i = -int(extent_iris[2]-5-extent_aia[3])
-
-cut_aia = new_aia[y_f:y_i, x_i:x_f]
-
-# Prepare Images for Alignment
-print("-"*10, "[Section] Prepare Images for Alignment", "-"*10)
-
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia, cmap='afmhot', origin="lower")
-sb.saveblank(outpath, "aia_color_gen_coord_ex_"+OBSID)
-
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia, cmap='afmhot', origin="lower")
-sb.saveblank(outpath, "aia_gen_coord_ex_"+OBSID)
-
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cropped_iris, origin="lower", cmap="afmhot", vmin=iris_vmin, vmax = iris_vmax)
-sb.saveblank(outpath, "iris_gen_coord_ex_"+OBSID)
-
-color_aia_to_align = cv2.imread(outpath + "aia_color_gen_coord_ex_{}.png".format(OBSID))
-aia_to_align = cv2.imread(outpath + "aia_gen_coord_ex_{}.png".format(OBSID))
-iris_to_align = cv2.imread(outpath + "iris_gen_coord_ex_{}.png".format(OBSID))
-
-# Running Alignment
-print("-"*10, "[Section] Aligning Images", "-"*10)
-alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align,"/Users/jkim/Desktop/mg2hk/output/genresult_ex_{}.png".format(OBSID), 150, True, -1, blur_filter)
-
-# Flickering
 print("-"*10, "[Section] Flickering", "-"*10)
-outputpath = "/Users/jkim/Desktop/mg2hk/output/genresult_ex_{}.png".format(OBSID)
+outputpath = "/Users/jkim/Desktop/mg2hk/output/ex_genresult_{}.png".format(OBSID)
 result = mpimg.imread(outputpath)
 new_result = result[:,:,0]
 newest = crop_image(new_result)
-reshaped_result = rebin.congrid(newest, cropped_iris.shape)
+reshaped_result = rebin.congrid(newest, new_iris_data.shape)
 fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 
 toggle=0
@@ -142,7 +145,7 @@ try:
         if (toggle%2 == 0):
             ax.imshow(reshaped_result, cmap="afmhot")
         else:
-            ax.imshow(cropped_iris, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
+            ax.imshow(new_iris_data, cmap='afmhot', origin="lower")
         display.display(fig)
         display.clear_output(wait = True)
         toggle += 1
