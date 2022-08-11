@@ -91,32 +91,34 @@ x_f = int(extent_iris[1]+pad-extent_aia[0])
 y_f = -int(extent_iris[3]+pad-extent_aia[3])
 y_i = -int(extent_iris[2]-pad-extent_aia[3])
 cut_aia = new_aia[y_f:y_i, x_i:x_f]
+
 print('Size cutout AIA', cut_aia.shape)
-print(cut_aia)
-print(cut_aia.dtype)
 
-cv_cut = (cut_aia*8).astype(np.uint8)
-print(cv_cut)
-print(cv_cut.dtype)
+# print(cut_aia)
+# print(cut_aia.dtype)
 
-
-
-cv_cut_f = cv2.applyColorMap(cv_cut, cv2.COLORMAP_HOT)
-
-fig, ax = plt.subplots(figsize=[5, 10])
-ax.imshow(cv_cut, cmap='afmhot')
+# cv_cut = (cut_aia*8).astype(np.uint8)
+# print(cv_cut)
+# print(cv_cut.dtype)
 
 
-cv2.imshow("test", cv_cut_f)
-cv2.imshow("test2", new_iris_data)
 
-plt.show()
-cv2.waitKey(0)
+# cv_cut_f = cv2.applyColorMap(cv_cut, cv2.COLORMAP_HOT)
 
-print(cv_cut.shape)
-print(cv_cut)
-print(cv_cut_f.shape)
-print(cv_cut_f)
+# fig, ax = plt.subplots(figsize=[5, 10])
+# ax.imshow(cv_cut, cmap='afmhot')
+
+
+# cv2.imshow("test", cv_cut_f)
+# cv2.imshow("test2", new_iris_data)
+
+# plt.show()
+# cv2.waitKey(0)
+
+# print(cv_cut.shape)
+# print(cv_cut)
+# print(cv_cut_f.shape)
+# print(cv_cut_f)
 
 # fig, ax = plt.subplots(1, 2, figsize=[10, 10])
 # ax[0].imshow(cut_aia, cmap='afmhot', origin='lower')
@@ -201,71 +203,48 @@ plt.show()
 
 # Prepare Images for Alignment
 print("-"*10, "[Section] Prepare Images for Alignment", "-"*10)
-
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia, cmap='afmhot', origin="lower")
-# cadata = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8,
-#             sep='')
-# cadata = cadata.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-# print(cadata.shape, cut_aia.shape)
-# print(cadata)
-sb.saveblank(outpath, "aia_color_gen_coord_"+OBSID)
-
-fig, ax = plt.subplots(figsize=[10,10])
-# ax.imshow(alignlib.lee_filter((cut_aia>AIA_THRESHOLD)*1, blur_filter), cmap='afmhot', origin="lower")
-ax.imshow((cut_aia>AIA_THRESHOLD)*1, cmap='afmhot', origin="lower")
-sb.saveblank(outpath, "aia_gen_coord_"+OBSID)
-
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(alignlib.lee_filter(alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH), blur_filter), origin="lower", cmap="afmhot")
-sb.saveblank(outpath, "iris_gen_coord_"+OBSID)
-
-color_aia_to_align = cv2.imread(outpath + "aia_color_gen_coord_{}.png".format(OBSID))
-aia_to_align = cv2.imread(outpath + "aia_gen_coord_{}.png".format(OBSID))
-iris_to_align = cv2.imread(outpath + "iris_gen_coord_{}.png".format(OBSID))
+aia_to_align = ((cut_aia>AIA_THRESHOLD)*255).astype(np.uint8)
+iris_to_align = cv2.normalize(alignlib.lee_filter((alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH)*255), blur_filter), None, 0, 255, cv2.NORM_MINMAX).astype('uint8')
 
 # Running Alignment
 print("-"*10, "[Section] Aligning Images", "-"*10)
+matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 10, blurFilter = blur_filter)
 
-aligned, matrix, walign, halign = alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align ,"/Users/jkim/Desktop/mg2hk/output/genresult_{}.png".format(OBSID), 150, True, 10, blur_filter)
+aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
+aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
+
+# Results
+print("-"*10, "[Section] Results", "-"*10)
+print("ALIGNED AIA ARRAY SIZE: ", aligned_color_aia.shape)
+print("IRIS ARRAY SIZE: ", new_iris_data.shape)
+print("Transformation Matrix: ", matrix)
+
+# fig, ax = plt.subplots(1, 5, figsize=[5, 10])
+# ax[0].imshow(aligned_color_aia, cmap="afmhot", origin="lower")
+# ax[1].imshow(aligned_aia, cmap="afmhot", origin="lower")
+# ax[2].imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
+# ax[3].imshow(color_aia_to_align, cmap="afmhot", origin="lower")
+# ax[4].imshow(cut_aia, cmap="afmhot", origin="lower")
+# plt.show()
+
 
 # Flickering
-def crop_image(img,tol=0):
-    # img is 2D or 3D image data
-    # tol  is tolerance
-    mask = img>tol
-    if img.ndim==3:
-        mask = mask.all(2)
-    m,n = mask.shape
-    mask0,mask1 = mask.any(0),mask.any(1)
-    col_start,col_end = mask0.argmax(),n-mask0[::-1].argmax()
-    row_start,row_end = mask1.argmax(),m-mask1[::-1].argmax()
-    return img[row_start:row_end,col_start:col_end]
-
 print("-"*10, "[Section] Flickering", "-"*10)
-outputpath = "/Users/jkim/Desktop/mg2hk/output/genresult_{}.png".format(OBSID)
-result = mpimg.imread(outputpath)
-new_result = result[:,:,0]
-newest = crop_image(new_result)
-reshaped_result = rebin.congrid(newest, new_iris_data.shape)
-fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 
+fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 toggle=0
 
-try:
-    while True:
-        if (toggle%2 == 0):
-            ax.imshow(reshaped_result, cmap="afmhot")
-        else:
-            ax.imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
-        display.display(fig)
-        display.clear_output(wait = True)
-        toggle += 1
-        plt.pause(0.5)
-except KeyboardInterrupt:
-    pass    
-    
 
-# Getting image arrays for comparison
-print("-"*10, "[Section] Evaluating Similarity", "-"*10)
-# cropped_iris, reshaped_result
+while True:
+    if (toggle%2 == 0):
+        ax.imshow(aligned_color_aia, cmap="afmhot", origin="lower")
+    else:
+        ax.imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
+    display.display(fig)
+    display.clear_output(wait = True)
+    toggle += 1
+    plt.pause(0.5)
+    
+# # Getting image arrays for comparison
+# print("-"*10, "[Section] Evaluating Similarity", "-"*10)
+# # cropped_iris, reshaped_result

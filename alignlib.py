@@ -9,6 +9,72 @@ from iris_lmsalpy import saveall as sv
 #params
 #aia, iris, DEBUG, maxFeatures, num_max_points
 
+# to-define
+# detect keypoints, show matches
+# calculate transformation
+# apply transformation and display, apply to color_version
+# return aligned image, matrix, width + height
+
+#updated align function
+def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
+    
+#     # blurredaia = blur(aia, blurFilter)
+#     blurredaia = aia
+#     blurrediris = blur(iris, blurFilter)
+    
+    fig, ax = plt.subplots(1, 2, figsize=[10,10])
+    ax[0].imshow(aia)
+    ax[1].imshow(iris)
+    plt.show()
+    print("SIZE AFTER BLUR", aia.shape, iris.shape)
+    
+    
+    sift = cv2.SIFT_create()
+    kpsA, descsA = sift.detectAndCompute(aia, None)
+    kpsB, descsB = sift.detectAndCompute(iris, None)
+    
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(descsA,descsB,k=2)
+    
+    
+    good = []
+    for m,n in matches:
+        if m.distance < 0.75*n.distance:
+            good.append([m])
+    good = sorted(good, key = lambda x: x[0].distance)[:num_max_points]
+    matches = sorted(matches, key = lambda x: x[0].distance)[:num_max_points]
+    
+    ptsA = np.zeros((len(matches), 2), dtype="float")
+    ptsB = np.zeros((len(matches), 2), dtype="float")
+    for (i, m) in enumerate(good):
+        ptsA[i] = kpsA[m[0].queryIdx].pt
+        ptsB[i] = kpsB[m[0].trainIdx].pt
+    
+        
+    ptsA = ptsA.astype(np.float32)
+    ptsB = ptsB.astype(np.float32)
+    M = cv2.estimateAffinePartial2D(ptsA[:num_max_points], ptsB[:num_max_points], False)
+    #print(M)
+    #print("ESTIMATE: ", M[0].shape)
+    inversetra = cv2.invertAffineTransform(M[0])
+    (h, w) = iris.shape[:2]
+    
+    
+    
+    if debug:
+        # matching keypoints
+        matchedVis = cv2.drawMatchesKnn(aia, kpsA, iris, kpsB,
+            matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        matchedVis = imutils.resize(matchedVis, width=1000)
+        cv2.imshow("Matched Keypoints", matchedVis)
+        cv2.waitKey(0)
+    
+    print("aia dimensions: ", aia.shape)
+    print("done aligning")
+    
+    return M[0], w, h
+
+
 #aligning function
 def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False, 
                 num_max_points=3, blurFilter = 3):
