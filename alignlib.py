@@ -18,9 +18,8 @@ from iris_lmsalpy import saveall as sv
 #updated align function
 def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
     
-#     # blurredaia = blur(aia, blurFilter)
-#     blurredaia = aia
-#     blurrediris = blur(iris, blurFilter)
+    blurredaia = lee_filter(aia, blurFilter)
+    blurrediris = lee_filter(iris, blurFilter)
     
     fig, ax = plt.subplots(1, 2, figsize=[10,10])
     ax[0].imshow(aia)
@@ -29,9 +28,17 @@ def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
     print("SIZE AFTER BLUR", aia.shape, iris.shape)
     
     
-    sift = cv2.SIFT_create()
-    kpsA, descsA = sift.detectAndCompute(aia, None)
-    kpsB, descsB = sift.detectAndCompute(iris, None)
+    # sift = cv2.SIFT_create()
+    # kpsA, descsA = sift.detectAndCompute(aia, None)
+    # kpsB, descsB = sift.detectAndCompute(iris, None)
+    
+    orb = cv2.ORB_create()
+    kpsA = orb.detect(aia, None)
+    kpsB = orb.detect(iris, None)
+    
+    kpsA, descsA = orb.compute(aia, kpsA)
+    kpsB, descsB = orb.compute(iris, kpsB)
+    
     
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
@@ -83,8 +90,8 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
     aiaGray = cv2.cvtColor(aia, cv2.COLOR_BGR2GRAY)
     irisGray = cv2.cvtColor(iris, cv2.COLOR_BGR2GRAY)
     
-    blurredaia = blur(aiaGray, 35)
-    blurrediris = blur(irisGray, 35)
+    blurredaia = blur(aiaGray, blurFilter)
+    blurrediris = blur(irisGray, blurFilter)
     print("blurred images")
     
 #     blurredaia = aiaGray.copy()
@@ -231,6 +238,74 @@ def lee_filter(img, size):
     img_output = img_mean + img_weights * (img - img_mean)
     return img_output
 
+def get_top_n(img, n):
+    a = img.copy()
+    img_flat = a.flatten()
+    sort_flat = np.sort(img_flat)
+    l = int(len(sort_flat)*(1-n))
+    thr = sort_flat[l]
+    
+    return thr
+
+def manual_align(aiao, iriso):
+    aia = cv2.cvtColor(aiao, cv2.COLOR_GRAY2BGR)
+    iris = cv2.cvtColor(iriso, cv2.COLOR_GRAY2BGR)
+    
+    def detectClick(event, x, y, flags, params):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if params == "iris":
+                print(x, ", ", y, " on iris")
+                kpsi.append(cv2.KeyPoint(x, y, 1))
+                cv2.circle(iris, (x, y), 2, (0, 0, 255), 2)
+                cv2.imshow("IRIS keypoint select", iris)
+            if params == "aia":
+                print(x, ", ", y, " on aia")
+                kpsa.append(cv2.KeyPoint(x, y, 1))
+                cv2.circle(aia, (x, y), 2, (255, 0, 0), 2)
+                cv2.imshow("AIA keypoint select", aia)
+
+    kpsi = [] #iris keypoints
+    kpsa = [] #aia keypoints
+    nkpsa = []
+    nkpsi = []
+    
+
+    print("[CHECKPOINT] select keypoints")
+    cv2.imshow("IRIS keypoint select", iris)
+    cv2.setMouseCallback("IRIS keypoint select", detectClick, "iris")
+    cv2.imshow("AIA keypoint select", aia)
+    cv2.setMouseCallback("AIA keypoint select", detectClick, "aia")
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    print("[UPDATE]: how many keypoints - ", len(kpsi), len(kpsa))
+    
+    for kp in kpsa:
+        nkpsa.append(kp.pt)
+    
+    for kp in kpsi:
+        nkpsi.append(kp.pt)
+    
+    nkpsa = np.array(nkpsa)
+    nkpsi = np.array(nkpsi)
+       
+    numkp = len(kpsi)
+    
+    ptsA = np.zeros((numkp, 2), dtype="float")
+    ptsB = np.zeros((numkp, 2), dtype="float")
+    
+    for i in range(numkp):
+        ptsA[i] = nkpsa[i].astype(np.float32)
+        ptsB[i] = nkpsi[i].astype(np.float32)
+    M = cv2.estimateAffinePartial2D(nkpsa, nkpsi, False)
+    (h, w) = iris.shape[:2]
+
+    return M[0], w, h
+
+def mse(imageA, imageB):
+    err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+    err /= float(imageA.shape[0] * imageA.shape[1])
+    # lower is better
+    return err
 
 #visualizing
 import numpy as np

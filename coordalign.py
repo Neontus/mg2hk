@@ -1,6 +1,15 @@
 # PARAMS:
 
-OBSID = '20220626_040436_3620108077'
+to_test = [
+    '20220626_040436_3620108077',
+    '20220721_053919_3620108077',
+    '20220722_222826_3620108076',
+    '20220724_012227_3620110077',
+    '20220730_125009_3620112077'
+]
+
+OBSID = to_test[3]
+opt2 = False
 NUMRASTER = 0
 outpath = "/Users/jkim/Desktop/mg2hk/output/"
 blur_filter = 15
@@ -60,6 +69,7 @@ iris_raster = ei.load(iris_file[0])
 extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
 mgii = iris_raster.raster['Mg II k 2796'].data
 sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
+if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
 limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
 mgii = mgii[:limit_mask,:,sel_wl]
 mgii = mgii.clip(75,400)
@@ -208,7 +218,7 @@ iris_to_align = cv2.normalize(alignlib.lee_filter((alignlib.imgthr(new_iris_data
 
 # Running Alignment
 print("-"*10, "[Section] Aligning Images", "-"*10)
-matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 10, blurFilter = blur_filter)
+matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 15, blurFilter = blur_filter)
 
 aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
 aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
@@ -218,6 +228,10 @@ print("-"*10, "[Section] Results", "-"*10)
 print("ALIGNED AIA ARRAY SIZE: ", aligned_color_aia.shape)
 print("IRIS ARRAY SIZE: ", new_iris_data.shape)
 print("Transformation Matrix: ", matrix)
+print("""AIA THRESHOLD: {}
+BLUR FILTER: {}
+IRIS THRESHOLDS: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
+
 
 # fig, ax = plt.subplots(1, 5, figsize=[5, 10])
 # ax[0].imshow(aligned_color_aia, cmap="afmhot", origin="lower")
