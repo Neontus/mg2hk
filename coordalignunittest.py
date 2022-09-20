@@ -1,13 +1,35 @@
 # PARAMS:
+# N = 0.15
+# AIA_THRESHOLD = 100
+# blur_filter = 35
+# IRIS_THRESHOLDL = 131
+IRIS_THRESHOLDH = 450.025
+opt2 = False
 
-OBSID = '20220626_040436_3620108077'
+import argparse
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-o", "--obsid", required=True,
+                help='obsid for input')
+ap.add_argument("-b", "--blur", required=True,
+                help="blur filter size")
+ap.add_argument("-n", "--topn", required=True,
+                help="top n for pixels")
+args = vars(ap.parse_args())
+
+OBSID = args["obsid"]
+N = float(args["topn"])
+blur_filter = int(args["blur"])
+
+print("testing with: (OBSID - {}), (N - {}), (blur - {})".format(OBSID, N, blur_filter))
+
 NUMRASTER = 0
 outpath = "/Users/jkim/Desktop/mg2hk/output/"
-blur_filter = 5
 
 import os
 import numpy as np
 import scipy
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import imutils
@@ -26,6 +48,7 @@ import my_fits
 import saveblank as sb
 import alignlib
 
+# matplotlib.use("TkAgg")
 
 print("-"*10, "[Section] Loading Data", "-"*10)
 #obsid, numraster = '20211015_051453_3600009176', 0
@@ -58,6 +81,7 @@ iris_raster = ei.load(iris_file[0])
 extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
 mgii = iris_raster.raster['Mg II k 2796'].data
 sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
+if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
 limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
 mgii = mgii[:limit_mask,:,sel_wl]
 mgii = mgii.clip(75,400)
@@ -89,71 +113,60 @@ x_f = int(extent_iris[1]+pad-extent_aia[0])
 y_f = -int(extent_iris[3]+pad-extent_aia[3])
 y_i = -int(extent_iris[2]-pad-extent_aia[3])
 cut_aia = new_aia[y_f:y_i, x_i:x_f]
+
 print('Size cutout AIA', cut_aia.shape)
-fig, ax = plt.subplots(1, 2, figsize=[10, 10])
-ax[0].imshow(cut_aia, cmap='afmhot', origin='lower')
-ax[1].imshow(new_iris_data, cmap='afmhot', origin='lower')
-plt.show()
 
 # Prepare Images for Alignment
 print("-"*10, "[Section] Prepare Images for Alignment", "-"*10)
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia, cmap='afmhot', origin="lower")
-sb.saveblank(outpath, "ex_aia_color_gen_coord_"+OBSID)
 
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(cut_aia, cmap='afmhot', origin="lower")
-sb.saveblank(outpath, "ex_aia_gen_coord_"+OBSID)
+AIA_THRESHOLD = alignlib.get_top_n(cut_aia, N)
+IRIS_THRESHOLDL = alignlib.get_top_n(new_iris_data, N)
 
-fig, ax = plt.subplots(figsize=[10,10])
-ax.imshow(new_iris_data, origin="lower", cmap="afmhot")
-sb.saveblank(outpath, "ex_iris_gen_coord_"+OBSID)
+aia_to_align = ((cut_aia>AIA_THRESHOLD)*255).astype(np.uint8)
+iris_to_align = cv2.normalize(alignlib.lee_filter((alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH)*255), blur_filter), None, 0, 255, cv2.NORM_MINMAX).astype('uint8')
 
-color_aia_to_align = cv2.imread(outpath + "ex_aia_color_gen_coord_{}.png".format(OBSID))
-aia_to_align = cv2.imread(outpath + "ex_aia_gen_coord_{}.png".format(OBSID))
-iris_to_align = cv2.imread(outpath + "ex_iris_gen_coord_{}.png".format(OBSID))
+# Testing Defaults
+iris_vmax, iris_vmin = 400, 75
+print("""AIA THRESHOLD: {}
+BLUR: {}
+IRIS_THRESHOLD: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
 
 # Running Alignment
 print("-"*10, "[Section] Aligning Images", "-"*10)
-alignlib.align_images(color_aia_to_align, aia_to_align, iris_to_align,"/Users/jkim/Desktop/mg2hk/output/ex_genresult_{}.png".format(OBSID), 150, True, 70, blur_filter)
+# matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 5, blurFilter = blur_filter)
+
+matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align)
+
+aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
+aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
+
+# Results
+print("-"*10, "[Section] Results", "-"*10)
+print("ALIGNED AIA ARRAY SIZE: ", aligned_color_aia.shape)
+print("IRIS ARRAY SIZE: ", new_iris_data.shape)
+print("Transformation Matrix: ", matrix)
+print("""AIA THRESHOLD: {}
+BLUR FILTER: {}
+IRIS THRESHOLDS: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
+error = alignlib.mse(aligned_color_aia, new_iris_data)
+print(error)
+
+
+
 
 # Flickering
-def crop_image(img,tol=0):
-    # img is 2D or 3D image data
-    # tol  is tolerance
-    mask = img>tol
-    if img.ndim==3:
-        mask = mask.all(2)
-    m,n = mask.shape
-    mask0,mask1 = mask.any(0),mask.any(1)
-    col_start,col_end = mask0.argmax(),n-mask0[::-1].argmax()
-    row_start,row_end = mask1.argmax(),m-mask1[::-1].argmax()
-    return img[row_start:row_end,col_start:col_end]
-
 print("-"*10, "[Section] Flickering", "-"*10)
-outputpath = "/Users/jkim/Desktop/mg2hk/output/ex_genresult_{}.png".format(OBSID)
-result = mpimg.imread(outputpath)
-new_result = result[:,:,0]
-newest = crop_image(new_result)
-reshaped_result = rebin.congrid(newest, new_iris_data.shape)
-fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 
+fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 toggle=0
 
-try:
-    while True:
-        if (toggle%2 == 0):
-            ax.imshow(reshaped_result, cmap="afmhot")
-        else:
-            ax.imshow(new_iris_data, cmap='afmhot', origin="lower")
-        display.display(fig)
-        display.clear_output(wait = True)
-        toggle += 1
-        plt.pause(0.5)
-except KeyboardInterrupt:
-    pass    
+for i in range(10):
+    if (toggle%2 == 0):
+        ax.imshow(aligned_color_aia, cmap="afmhot", origin="lower")
+    else:
+        ax.imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
+    display.display(fig)
+    display.clear_output(wait = True)
+    toggle += 1
+    plt.pause(0.5)
     
-
-# Getting image arrays for comparison
-print("-"*10, "[Section] Evaluating Similarity", "-"*10)
-# cropped_iris, reshaped_result
