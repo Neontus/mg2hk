@@ -7,7 +7,7 @@ import matplotlib.image as mpimg
 import imutils
 import cv2
 
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize, differential_evolution
 from scipy import ndimage as ndi
 from iris_lmsalpy import extract_irisL2data as ei
 from aiapy.calibrate import normalize_exposure, register, update_pointing
@@ -114,14 +114,14 @@ def align(flataia, scalex = 1, scaley = 1, theta = 0, translatex = 0, translatey
     iris = ndi.affine_transform(aia, transform)
     iris = iris.flatten()
 
-    return
+    return 
 
 init_vals = ([1, 1, 0, 0, 0])
 limits = ([0.8, 0.8, -5, -10, -10],[1.2, 1.2, 5, 10, 10])
 
 # Aligned Images
 
-best_values, covar = curve_fit(align, aia, iris.flatten(), p0=init_vals, bounds=limits)
+best_values, covar = differential_evolution(align, bounds=limits, seed=1)
 print("Best Values: ", best_values)
 print("Covar: ", covar)
 

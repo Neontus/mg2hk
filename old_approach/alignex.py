@@ -128,7 +128,7 @@ cv2.destroyAllWindows()
 print("[UPDATE]: how many keypoints - ", len(kpsi), len(kpsa))
 
 #to apply to color version
-color_path = '/Users/jkim/Desktop/mg2hk/output/aia_color_coord.png'
+color_path = '/output/aia_color_coord.png'
 color_aia = cv2.imread(color_path)
 
 # align the images
