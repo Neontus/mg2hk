@@ -45,7 +45,6 @@ from matplotlib.widgets import RangeSlider, Button
 import rebin
 import pick_from_LMSAL
 import my_fits
-import saveblank as sb
 import alignlib
 
 # matplotlib.use("TkAgg")
@@ -135,7 +134,7 @@ IRIS_THRESHOLD: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_
 print("-"*10, "[Section] Aligning Images", "-"*10)
 # matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 5, blurFilter = blur_filter)
 
-matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align)
+transformed_aia, matrix, walign, halign = alignlib.sift_ransac(aia_to_align, iris_to_align, debug=True)
 
 aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
 aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
