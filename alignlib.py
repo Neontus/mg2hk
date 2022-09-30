@@ -111,7 +111,6 @@ def align_images(color_aia, aia, iris, outpath, maxFeatures=500, debug = False,
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
     
-    
     good = []
     for m,n in matches:
         if m.distance < 0.75*n.distance:
@@ -306,6 +305,28 @@ def mse(imageA, imageB):
     err /= float(imageA.shape[0] * imageA.shape[1])
     # lower is better
     return err
+
+import skimage
+from skimage.feature import ORB, match_descriptors, SIFT, plot_matches
+from skimage import transform
+
+def sift_ransac(aia, iris, debug = False):
+    sift = SIFT()
+    sift.detect_and_extract(aia)
+    kpsa, descsa = sift.keypoints, sift.descriptors
+    sift.detect_and_extract(iris)
+    kpsi, descsi = sift.keypoints, sift.descriptors
+
+    matches = match_descriptors(descsa, descsi, max_ratio = 0.6, cross_check=True)
+
+    if debug:
+        fig, ax = plt.subplots(1, 1, figsize=[5, 5])
+        plot_matches(ax, aia, iris, kpsa, kpsi, matches)
+        plt.show()
+
+    
+
+    return
 
 #visualizing
 import numpy as np

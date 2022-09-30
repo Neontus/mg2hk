@@ -33,7 +33,6 @@ from matplotlib.widgets import RangeSlider, Button
 import rebin
 import pick_from_LMSAL
 import my_fits
-import saveblank as sb
 import alignlib
 
 matplotlib.use('TkAgg')
@@ -218,7 +217,9 @@ iris_to_align = cv2.normalize(alignlib.lee_filter((alignlib.imgthr(new_iris_data
 
 # Running Alignment
 print("-"*10, "[Section] Aligning Images", "-"*10)
-matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 15, blurFilter = blur_filter)
+# matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 5, blurFilter = blur_filter)
+
+transformed_aia, matrix, walign, halign = alignlib.sift_ransac(aia_to_align, iris_to_align)
 
 aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
 aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
@@ -231,15 +232,8 @@ print("Transformation Matrix: ", matrix)
 print("""AIA THRESHOLD: {}
 BLUR FILTER: {}
 IRIS THRESHOLDS: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
-
-
-# fig, ax = plt.subplots(1, 5, figsize=[5, 10])
-# ax[0].imshow(aligned_color_aia, cmap="afmhot", origin="lower")
-# ax[1].imshow(aligned_aia, cmap="afmhot", origin="lower")
-# ax[2].imshow(new_iris_data, cmap='afmhot', origin="lower", vmin = iris_vmin, vmax = iris_vmax)
-# ax[3].imshow(color_aia_to_align, cmap="afmhot", origin="lower")
-# ax[4].imshow(cut_aia, cmap="afmhot", origin="lower")
-# plt.show()
+error = alignlib.mse(aligned_color_aia, new_iris_data)
+print(error)
 
 
 # Flickering
@@ -248,8 +242,7 @@ print("-"*10, "[Section] Flickering", "-"*10)
 fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 toggle=0
 
-
-while True:
+for i in range(10):
     if (toggle%2 == 0):
         ax.imshow(aligned_color_aia, cmap="afmhot", origin="lower")
     else:
@@ -258,7 +251,3 @@ while True:
     display.clear_output(wait = True)
     toggle += 1
     plt.pause(0.5)
-    
-# # Getting image arrays for comparison
-# print("-"*10, "[Section] Evaluating Similarity", "-"*10)
-# # cropped_iris, reshaped_result
