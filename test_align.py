@@ -1,58 +1,17 @@
-# PARAMS:
-N = 0.15
-AIA_THRESHOLD = 100
-blur_filter = 35
-OBSID = "20220626_040436_3620108077"
-IRIS_THRESHOLDL = 131
-IRIS_THRESHOLDH = 450.025
-opt2 = False
-
-#
-# import argparse
-#
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-o", "--obsid", required=True,
-#                 help='obsid for input')
-# ap.add_argument("-b", "--blur", required=True,
-#                 help="blur filter size")
-# ap.add_argument("-n", "--topn", required=True,
-#                 help="top n for pixels")
-# args = vars(ap.parse_args())
-#
-# OBSID = args["obsid"]
-# N = float(args["topn"])
-# blur_filter = int(args["blur"])
-
-print("testing with: (OBSID - {}), (N - {}), (blur - {})".format(OBSID, N, blur_filter))
-#
-NUMRASTER = 0
-outpath = "/Users/jkim/Desktop/mg2hk/output/"
-
-import os
 import numpy as np
-import scipy
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import imutils
-import cv2
-import warnings
-
 from iris_lmsalpy import extract_irisL2data as ei
-from aiapy.calibrate import normalize_exposure, register, update_pointing
-from astropy.io import fits
-from IPython import display
-from matplotlib.widgets import RangeSlider, Button
-
 import rebin
 import pick_from_LMSAL
 import my_fits
 import alignlib
+import cv2
+import matplotlib.pyplot as plt
+from IPython import display
 
-# matplotlib.use("TkAgg")
 
-print("-" * 10, "[Section] Loading Data", "-" * 10)
-# obsid, numraster = '20211015_051453_3600009176', 0
+OBSID = '20220626_040436_3620108077'
+NUMRASTER = 0
+
 obsid, numraster = OBSID, NUMRASTER
 iris_file = pick_from_LMSAL.obsid_raster(obsid, raster=numraster)
 aia_file = pick_from_LMSAL.obsid_raster2aia(obsid, raster=numraster, pattern='1600')
@@ -82,7 +41,7 @@ iris_raster = ei.load(iris_file[0])
 extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
 mgii = iris_raster.raster['Mg II k 2796'].data
 sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
-if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
+# if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
 limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
 mgii = mgii[:limit_mask, :, sel_wl]
 mgii = mgii.clip(75, 400)
@@ -117,50 +76,27 @@ y_f = -int(extent_iris[3] + pad - extent_aia[3])
 y_i = -int(extent_iris[2] - pad - extent_aia[3])
 cut_aia = new_aia[y_f:y_i, x_i:x_f]
 
-print('Size cutout AIA', cut_aia.shape)
+a = alignlib.super_align(cut_aia, new_iris_data, 0.21, 0.39, 20)
+res = a.minimize()
+best_params = res["x"]
 
-# Prepare Images for Alignment
-print("-" * 10, "[Section] Prepare Images for Alignment", "-" * 10)
+best_aia_N, best_iris_N, best_blur = best_params
 
-AIA_THRESHOLD = alignlib.get_top_n(cut_aia, N)
-IRIS_THRESHOLDL = alignlib.get_top_n(new_iris_data, N)
+AIA_THRESH = alignlib.get_top_n(cut_aia, best_aia_N)
+IRIS_THRESH_L = alignlib.get_top_n(new_iris_data, best_iris_N)
+IRIS_THRESH_H = 450.025
 
-aia_to_align = ((cut_aia > AIA_THRESHOLD) * 255).astype(np.uint8)
-iris_to_align = cv2.normalize(
-    alignlib.lee_filter((alignlib.imgthr(new_iris_data, IRIS_THRESHOLDL, IRIS_THRESHOLDH) * 255), blur_filter), None, 0,
-    255, cv2.NORM_MINMAX).astype('uint8')
-
-# Testing Defaults
-iris_vmax, iris_vmin = 400, 75
-print("""AIA THRESHOLD: {}
-BLUR: {}
-IRIS_THRESHOLD: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
-
-# Running Alignment
-print("-" * 10, "[Section] Aligning Images", "-" * 10)
-# matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 5, blurFilter = blur_filter)
+aia_to_align = ((cut_aia > AIA_THRESH) * 255).astype(np.uint8)
+iris_to_align = cv2.normalize(alignlib.lee_filter((alignlib.imgthr(new_iris_data, IRIS_THRESH_L, IRIS_THRESH_H) * 255), best_blur), None, 0,255, cv2.NORM_MINMAX).astype('uint8')
 
 matrix, walign, halign = alignlib.sift_ransac(aia_to_align, iris_to_align, debug=True)
 
 aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
-aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
-
-# Results
-print("-" * 10, "[Section] Results", "-" * 10)
-print("ALIGNED AIA ARRAY SIZE: ", aligned_color_aia.shape)
-print("IRIS ARRAY SIZE: ", new_iris_data.shape)
-print("Transformation Matrix: ", matrix)
-print("""AIA THRESHOLD: {}
-BLUR FILTER: {}
-IRIS THRESHOLDS: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
-error = alignlib.mse(aligned_color_aia, new_iris_data)
-print(error)
-
-# Flickering
-print("-" * 10, "[Section] Flickering", "-" * 10)
 
 fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 toggle = 0
+iris_vmax, iris_vmin = 400, 75
+
 
 for i in range(10):
     if (toggle % 2 == 0):

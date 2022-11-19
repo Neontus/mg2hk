@@ -1,6 +1,7 @@
 # PARAMS:
 
 to_test = [
+    '20221008_030317_3620108077'
     '20220626_040436_3620108077',
     '20220721_053919_3620108077',
     '20220722_222826_3620108076',
@@ -8,7 +9,7 @@ to_test = [
     '20220730_125009_3620112077'
 ]
 
-OBSID = to_test[3]
+OBSID = to_test[0]
 opt2 = False
 NUMRASTER = 0
 outpath = "/Users/jkim/Desktop/mg2hk/output/"

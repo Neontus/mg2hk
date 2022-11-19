@@ -5,6 +5,8 @@ import cv2
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from iris_lmsalpy import saveall as sv
+from scipy.optimize import minimize
+
 
 #params
 #aia, iris, DEBUG, maxFeatures, num_max_points
@@ -303,7 +305,6 @@ def manual_align(aiao, iriso):
 def mse(imageA, imageB):
     err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
     err /= float(imageA.shape[0] * imageA.shape[1])
-    # lower is better
     return err
 
 import skimage
@@ -311,7 +312,39 @@ from skimage.feature import ORB, match_descriptors, SIFT, plot_matches
 from skimage import transform
 
 def sift_ransac(aia, iris, debug = False):
+    # print(aia.shape, iris.shape)
     sift = SIFT()
+    sift.detect_and_extract(aia)
+    kpsa, descsa = sift.keypoints, sift.descriptors
+    sift.detect_and_extract(iris)
+    kpsi, descsi = sift.keypoints, sift.descriptors
+
+    matches = match_descriptors(descsa, descsi, max_ratio = 0.6, cross_check=True)
+
+    if debug:
+        fig, ax = plt.subplots(1, 1, figsize=[5, 5])
+        plot_matches(ax, aia, iris, kpsa, kpsi, matches)
+
+        plt.show()
+
+    if len(matches) == 0:
+        print("NO MATCHES!!")
+
+    matchcoords = [(kpsa[m[0]], kpsi[m[1]]) for m in matches]
+    aiacoords = np.array([np.array([m[0][1], m[0][0]]) for m in matchcoords])
+    iriscoords = np.array([np.array([m[1][1], m[1][0]]) for m in matchcoords])
+
+    H, inliers = cv2.estimateAffinePartial2D(aiacoords, iriscoords)
+
+    return H, iris.shape[1], iris.shape[0]
+
+from skimage.feature import CENSURE
+
+def censure_ransac(aia, iris, debug = False):
+    print(aia.shape, iris.shape)
+    censure = CENSURE()
+    censure.detect_and_extract
+
     sift.detect_and_extract(aia)
     kpsa, descsa = sift.keypoints, sift.descriptors
     sift.detect_and_extract(iris)
@@ -324,9 +357,56 @@ def sift_ransac(aia, iris, debug = False):
         plot_matches(ax, aia, iris, kpsa, kpsi, matches)
         plt.show()
 
-    
+    matchcoords = [(kpsa[m[0]], kpsi[m[1]]) for m in matches]
+    aiacoords = np.array([np.array([m[0][1], m[0][0]]) for m in matchcoords])
+    iriscoords = np.array([np.array([m[1][1], m[1][0]]) for m in matchcoords])
 
-    return
+    H, inliers = cv2.estimateAffinePartial2D(aiacoords, iriscoords)
+
+    return H, iris.shape[1], iris.shape[0]
+
+class super_align():
+    def __init__(self, aia, iris, guess_aia_N, guess_iris_N, guess_blur):
+        self.aia = aia
+        self.iris = iris
+        self.guess_aia_N = guess_aia_N
+        self.guess_iris_N = guess_iris_N
+        self.guess_blur = guess_blur
+
+    def do_alignment(self, params):
+        aia_N = params[0]
+        iris_N = params[1]
+        blur = params[2]
+
+        # print("HERE: ", aia_N, iris_N, blur)
+
+        #preprocess aia + iris
+        AIA_THRESH = get_top_n(self.aia, aia_N)
+        IRIS_THRESH_L = get_top_n(self.iris, iris_N)
+        IRIS_THRESH_H = 450.025
+
+        aia_to_align = ((self.aia > AIA_THRESH) * 255).astype(np.uint8)
+        iris_to_align = cv2.normalize(lee_filter((imgthr(self.iris, IRIS_THRESH_L, IRIS_THRESH_H) * 255), blur), None, 0,255, cv2.NORM_MINMAX).astype('uint8')
+
+        matrix, walign, halign = sift_ransac(aia_to_align, iris_to_align, debug=False)
+
+        # print("check: ", matrix, walign, halign)
+
+        if matrix is not None:
+            aligned_color_aia = cv2.warpAffine(self.aia, matrix, (walign, halign))
+            error = mse(aligned_color_aia, self.iris)
+        else:
+            error = 1000000000000000
+            exit()
+
+        return error
+
+    def minimize(self):
+        res = minimize(self.do_alignment, x0=[self.guess_aia_N, self.guess_iris_N, self.guess_blur], method='CG', tol=1e-2)
+        print("RESULT: ", res)
+        return res
+
+
 
 #visualizing
 import numpy as np
