@@ -1,34 +1,41 @@
+#printing
+
+import sys, os
+
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+def enablePrint():
+    sys.stdout = sys.__stdout__
+
+blockPrint()
+
+
 # PARAMS:
-N = 0.15
-AIA_THRESHOLD = 100
-blur_filter = 35
-OBSID = "20220626_040436_3620108077"
-IRIS_THRESHOLDL = 131
+import argparse
 IRIS_THRESHOLDH = 450.025
-opt2 = False
 
-#
-# import argparse
-#
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-o", "--obsid", required=True,
-#                 help='obsid for input')
-# ap.add_argument("-b", "--blur", required=True,
-#                 help="blur filter size")
-# ap.add_argument("-n", "--topn", required=True,
-#                 help="top n for pixels")
-# args = vars(ap.parse_args())
-#
-# OBSID = args["obsid"]
-# N = float(args["topn"])
-# blur_filter = int(args["blur"])
+ap = argparse.ArgumentParser()
+ap.add_argument("-o", "--obsid", required=True,
+                help='obsid for input')
+ap.add_argument("-b", "--blur", required=True,
+                help="blur filter size")
+ap.add_argument("-n", "--aian", required=True,
+                help="top n for pixels")
+ap.add_argument("-r", "--irisn", required=True,
+                help="top n for pixels(iris)")
+args = vars(ap.parse_args())
 
-print("testing with: (OBSID - {}), (N - {}), (blur - {})".format(OBSID, N, blur_filter))
+OBSID = args["obsid"]
+aia_N = float(args["aian"])
+iris_N = float(args["irisn"])
+blur_filter = int(args["blur"])
+
+print("testing with: (OBSID - {}), (N - {}), (blur - {})".format(OBSID, [aia_N, iris_N], blur_filter))
 #
 NUMRASTER = 0
 outpath = "/Users/jkim/Desktop/mg2hk/output/"
 
-import os
 import numpy as np
 import scipy
 import matplotlib
@@ -82,7 +89,7 @@ iris_raster = ei.load(iris_file[0])
 extent_hx_hy = iris_raster.raster['Mg II k 2796'].extent_heliox_helioy
 mgii = iris_raster.raster['Mg II k 2796'].data
 sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2794.73])
-if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
+# if opt2 == True: sel_wl = ei.get_ori_val(iris_raster.raster['Mg II k 2796'].wl, [2795.99])
 limit_mask = np.argmin(np.gradient(np.sum(iris_raster.raster['Mg II k 2796'].mask, axis=1)))
 mgii = mgii[:limit_mask, :, sel_wl]
 mgii = mgii.clip(75, 400)
@@ -122,8 +129,8 @@ print('Size cutout AIA', cut_aia.shape)
 # Prepare Images for Alignment
 print("-" * 10, "[Section] Prepare Images for Alignment", "-" * 10)
 
-AIA_THRESHOLD = alignlib.get_top_n(cut_aia, N)
-IRIS_THRESHOLDL = alignlib.get_top_n(new_iris_data, N)
+AIA_THRESHOLD = alignlib.get_top_n(cut_aia, aia_N)
+IRIS_THRESHOLDL = alignlib.get_top_n(new_iris_data, iris_N)
 
 aia_to_align = ((cut_aia > AIA_THRESHOLD) * 255).astype(np.uint8)
 iris_to_align = cv2.normalize(
@@ -140,7 +147,7 @@ IRIS_THRESHOLD: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_
 print("-" * 10, "[Section] Aligning Images", "-" * 10)
 # matrix, walign, halign = alignlib.align(aia_to_align, iris_to_align, debug=True, num_max_points = 5, blurFilter = blur_filter)
 
-matrix, walign, halign = alignlib.sift_ransac(aia_to_align, iris_to_align, debug=True)
+matrix, walign, halign = alignlib.sift_ransac(aia_to_align, iris_to_align, debug=False)
 
 aligned_color_aia = cv2.warpAffine(cut_aia, matrix, (walign, halign))
 aligned_aia = cv2.warpAffine(aia_to_align, matrix, (walign, halign))
@@ -154,10 +161,17 @@ print("""AIA THRESHOLD: {}
 BLUR FILTER: {}
 IRIS THRESHOLDS: {}""".format(AIA_THRESHOLD, blur_filter, (IRIS_THRESHOLDL, IRIS_THRESHOLDH)))
 error = alignlib.mse(aligned_color_aia, new_iris_data)
-print(error)
+
+enablePrint()
+
+print("N: ", aia_N, iris_N)
+print("Blur: ", blur_filter)
+print("MSE: ", error)
+
+blockPrint()
 
 # Flickering
-print("-" * 10, "[Section] Flickering", "-" * 10)
+# print("-" * 10, "[Section] Flickering", "-" * 10)
 
 fig, ax = plt.subplots(1, 1, figsize=[5, 10])
 toggle = 0
