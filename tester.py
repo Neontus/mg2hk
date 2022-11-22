@@ -5,7 +5,7 @@ import numpy as np
 
 to_test = [
     '20221008_030317_3620108077',
-    '20220924_021937_3620110077'
+#     '20220924_021937_3620110077'
     '20220626_040436_3620108077',
     '20220721_053919_3620108077',
     '20220722_222826_3620108076',
@@ -32,11 +32,11 @@ blur_to_test = np.arange(20, 30, 5)
 #     os.system("python unitalign.py -o {} -a {} -i {} -b {}".format(_id, init_values[i][0], init_values[i][1], init_values[i][2]))
 
 # os.system("python coordalignunittest.py -o {} -b {} -n{}".format(to_test[0], blur_to_test[0], n_to_test[0]))
-
-for a in a_to_test:
-    for i in i_to_test:
-        for b in blur_to_test:
-            os.system("python unitalign.py -o 20221008_030317_3620108077 -a {} -i{} -b{}".format(a, i, b))
+for img in to_test:
+    for a in a_to_test:
+        for i in i_to_test:
+            for b in blur_to_test:
+                os.system("python unitalign.py -o {} -a {} -i{} -b{}".format(img, a, i, b))
 
 
 # for test in to_test:

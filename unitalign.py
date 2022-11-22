@@ -99,7 +99,7 @@ cut_aia = new_aia[y_f:y_i, x_i:x_f]
 
 
 a = alignlib.super_align(cut_aia, new_iris_data, init_aia_n, init_iris_n, init_blur)
-res = a.minimize()
+res = a.nm_minimize()
 best_params = res["x"]
 
 best_aia_N, best_iris_N, best_blur = best_params
