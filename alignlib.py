@@ -7,6 +7,7 @@ from scipy.ndimage.measurements import variance
 from iris_lmsalpy import saveall as sv
 from scipy.optimize import minimize
 import pick_from_LMSAL
+import my_fits
 
 #params
 #aia, iris, DEBUG, maxFeatures, num_max_points
@@ -415,7 +416,7 @@ class super_align():
 
 def load(obsid):
     print("testing with: (OBSID - {})".format(obsid))
-    obsid, numraster = OBSID, 0
+    numraster = 0
     iris_file = pick_from_LMSAL.obsid_raster(obsid, raster=numraster)
     aia_file = pick_from_LMSAL.obsid_raster2aia(obsid, raster=numraster, pattern='1600')
 
