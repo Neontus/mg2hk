@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+import alignlib
 
 to_test = [
     '20221008_030317_3620108077',
@@ -33,11 +34,13 @@ blur_to_test = np.arange(20, 30, 5)
 
 # os.system("python coordalignunittest.py -o {} -b {} -n{}".format(to_test[0], blur_to_test[0], n_to_test[0]))
 for img in to_test:
+    iris, aia = alignlib.load(img)
     for a in a_to_test:
         for i in i_to_test:
             for b in blur_to_test:
-                os.system("python unitalign.py -o {} -a {} -i{} -b{}".format(img, a, i, b))
-
+                a = alignlib.super_align(aia, iris, a, i, b)
+                res = a.nm_minimize()
+                print(res)
 
 # for test in to_test:
 #     os.system("python ransacunit.py -o {} -b {} -n{}".format(test, 30, 0.10))
@@ -50,4 +53,3 @@ for img in to_test:
 # os.system("python ransacunit.py -o {} -b {} -n{} -r{}".format(to_test[0], 20, 0.21, 0.38))
 # os.system("python ransacunit.py -o {} -b {} -n{} -r{}".format(to_test[1], 20, 0.21, 0.31))
 # os.system("python ransacunit.py -o {} -b {} -n{} -r{}".format(to_test[4], 20, 0.21, 0.12))
-
