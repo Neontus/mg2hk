@@ -8,6 +8,8 @@ from iris_lmsalpy import saveall as sv
 from scipy.optimize import minimize
 import pick_from_LMSAL
 import my_fits
+from iris_lmsalpy import extract_irisL2data as ei
+import rebin
 
 #params
 #aia, iris, DEBUG, maxFeatures, num_max_points
@@ -330,6 +332,7 @@ def sift_ransac(aia, iris, debug = False):
 
     if len(matches) == 0:
         print("NO MATCHES!!")
+        return None, None, None
 
     matchcoords = [(kpsa[m[0]], kpsi[m[1]]) for m in matches]
     aiacoords = np.array([np.array([m[0][1], m[0][0]]) for m in matchcoords])
@@ -397,14 +400,14 @@ class super_align():
             aligned_color_aia = cv2.warpAffine(self.aia, matrix, (walign, halign))
             error = mse(aligned_color_aia, self.iris)
         else:
-            error = 1000000000000000
-            exit()
+            error = 100000
+            print("error, bad initial guess or data")
 
         return error
 
     def nm_minimize(self):
         res = minimize(self.do_alignment, x0=[self.guess_aia_N, self.guess_iris_N, self.guess_blur], method='Nelder-Mead', tol=1e-2)
-        print("RESULT: ", res)
+        # print("RESULT: ", res)
         return res
 
     def SLSQP_minimize(self):
