@@ -5,7 +5,7 @@ import cv2
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from iris_lmsalpy import saveall as sv
-from scipy.optimize import minimize
+from scipy.optimize import minimize, differential_evolution
 import pick_from_LMSAL
 import my_fits
 from iris_lmsalpy import extract_irisL2data as ei
@@ -376,6 +376,7 @@ class super_align():
         self.guess_aia_N = guess_aia_N
         self.guess_iris_N = guess_iris_N
         self.guess_blur = guess_blur
+        self.init_guess = [self.guess_aia_N, self.guess_iris_N, self.guess_blur]
 
     def do_alignment(self, params):
         aia_N = params[0]
@@ -411,9 +412,29 @@ class super_align():
         return res
 
     def SLSQP_minimize(self):
-        bnds = ((0, None), (0, None), (0, None))
-        cons = ()
-        res = minimize(self.do_alignment, x0=[self.guess_aia_N, self.guess_iris_N, self.guess_blur], method='SLSQP', bounds = bnds, constraints = cons)
+        bounds = ((0.19, 0.25), (0.1,0.5), (20, 30))
+
+        res = minimize(self.do_alignment, x0=[self.guess_aia_N, self.guess_iris_N, self.guess_blur], method='SLSQP', bounds = bounds)
+        print("RESULT: ", res)
+        return res
+
+    def powell_minimize(self):
+        res = minimize(self.do_alignment, x0=self.init_guess, method="Powell", tol=1e-2,
+                       options = {'disp': True})
+
+        print("RESULT: ", res)
+        return res
+
+    def BFGS_minimize(self):
+        res = minimize(self.do_alignment, x0=self.init_guess, method="BFGS",
+                       options = {'disp': True, 'maxiter': 100, 'return_all': True})
+        print("RESULT: ", res)
+        return res
+
+    def evolve(self):
+        bounds = ((0.19, 0.25), (0.1, 0.5), (20, 30))
+        res = differential_evolution(self.do_alignment, bounds = bounds)
+
         print("RESULT: ", res)
         return res
 
