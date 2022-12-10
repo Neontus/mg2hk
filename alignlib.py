@@ -448,8 +448,12 @@ class super_align():
 def load(obsid):
     print("testing with: (OBSID - {})".format(obsid))
     numraster = 0
-    iris_file = pick_from_LMSAL.obsid_raster(obsid, raster=numraster)
-    aia_file = pick_from_LMSAL.obsid_raster2aia(obsid, raster=numraster, pattern='1600')
+    try:
+        iris_file = pick_from_LMSAL.obsid_raster(obsid, raster=numraster)
+        aia_file = pick_from_LMSAL.obsid_raster2aia(obsid, raster=numraster, pattern='1600')
+    except:
+        iris_file = obsid
+        aia_file = obsid #???
 
     aia_data = my_fits.read(aia_file[0])
     aia_1600 = aia_data[0]
