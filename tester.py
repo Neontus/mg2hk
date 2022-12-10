@@ -45,13 +45,13 @@ for img in to_test:
         for i in i_to_test:
             for b in blur_to_test:
                 align = alignlib.super_align(aia, iris, a, i, b)
-                res = align.nm_minimize()
+                res = align.basin_hop()
                 print("Confirmation")
                 #print("Final inputs:", res['x'], '\n Error: ', res['fun'])
                 data.append([img, a, i, b, res['x'][0], res['x'][1], res['x'][2], res['fun']])
 
 df = pd.DataFrame(data, columns = ["OBSID", "AIA_N_GUESS", "IRIS_N_GUESS", "BLUR_GUESS", "OPTIMIZED_AIA", "OPTIMIZED_IRIS", "OPTIMIZED_BLUR", "RESULT"])
-df.to_csv("optimized_results.csv")
+df.to_csv("basin_results.csv")
 
 # for test in to_test:
 #     os.system("python ransacunit.py -o {} -b {} -n{}".format(test, 30, 0.10))
