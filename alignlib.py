@@ -5,7 +5,7 @@ import cv2
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from iris_lmsalpy import saveall as sv
-from scipy.optimize import minimize, differential_evolution
+from scipy.optimize import minimize, differential_evolution, basinhopping
 import pick_from_LMSAL
 import my_fits
 from iris_lmsalpy import extract_irisL2data as ei
@@ -434,6 +434,13 @@ class super_align():
     def evolve(self):
         bounds = ((0.19, 0.25), (0.1, 0.5), (20, 30))
         res = differential_evolution(self.do_alignment, bounds = bounds)
+
+        print("RESULT: ", res)
+        return res
+
+    def basin_hop(self):
+        minimizer_kwargs = {"method": "L-BFGS-B", "jac": False, "bounds": ((0.1, 0.3), (0.1, 0.5), (20, 30))}
+        res = basinhopping(self.do_alignment, self.init_guess, minimizer_kwargs=minimizer_kwargs, niter=200)
 
         print("RESULT: ", res)
         return res
