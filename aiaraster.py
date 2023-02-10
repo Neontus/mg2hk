@@ -795,7 +795,13 @@ list_iris_files = []
 for l in new_list_urls:
 	if 'raster.tar.gz' in l:
 	# name_dir = l[l.find('iris_l2'):l.find('_raster.tar')]
-		name_dir = l.replace('_compressed', '')
+		name_dir = l.replace('_compressed', '').replace('https://www.lmsal.com/solarsoft', '')
 		name_dir = name_dir[0:name_dir.find('iris_l2')]
 		list_iris_files.append(find.find(name_dir, 'iris_l2*raster*t000_r00000*fits')[0])
 
+
+to_test = []
+for iris_file in list_iris_files:
+	to_test.append(re.findall(r'l2_(\d*_\d*_\d*)', iris_file)[0])
+
+print(to_test)
