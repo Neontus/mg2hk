@@ -1,4 +1,4 @@
-import pick_from_LMSAL
+# import pick_from_LMSAL
 import my_fits
 import numpy as np
 import rebin
@@ -73,8 +73,8 @@ def new_load():
 	time_dict = dict(zip(iris_times, [closest_time(t, aia_times) for t in iris_times]))
 
 	for i, t in enumerate(time_dict):
-		aia = aia_imgs[i]
-
+		aia = aia_imgs[time_dict[t]]
+		print(aia.shape)
 
 
 
