@@ -1,4 +1,4 @@
-# import pick_from_LMSAL
+import pick_from_LMSAL
 import my_fits
 import numpy as np
 import rebin
@@ -61,20 +61,26 @@ def new_load():
 	extent_iris = [xcen_iris - wiris / 2, xcen_iris + wiris / 2, ycen_iris - hiris / 2, ycen_iris + hiris / 2]
 	# print(extent_iris)
 
-	aia_times = []
-	aia_imgs = []
+	aia_data = []
 
 	for aia_file in os.listdir(aia_folder):
 		aia_img, aia_header = my_fits.read(aia_folder+aia_file)
 		aia_time = aia_header['DATE_OBS']
-		aia_times.append(aia_time)
-		aia_imgs.append(aia_img)
+		aia_xcen, aia_ycen, aia_xfov, aia_yfov = aia_header['XCEN'], aia_header['YCEN'], aia_header['FOVX'], aia_header['FOVY']
+		low_x, high_x, low_y, high_y = aia_xcen - aia_xfov / 2, aia_xcen + aia_xfov / 2, aia_ycen - aia_yfov / 2, aia_ycen + aia_yfov / 2
+		extent_aia = [low_x, high_x, low_y, high_y]
 
-	time_dict = dict(zip(iris_times, [closest_time(t, aia_times) for t in iris_times]))
+		aia_data.append({
+			'time': aia_time,
+			'img': aia_img,
+			'extent': extent_aia
+		})
+
+	time_dict = dict(zip(iris_times, [closest_time(t, [d['time'] for d in aia_data]) for t in iris_times]))
 
 	for i, t in enumerate(time_dict):
-		aia = aia_imgs[time_dict[t]]
-		print(aia.shape)
+		aia = aia_data[time_dict[t]]
+		print(aia['img'].shape)
 
 
 
