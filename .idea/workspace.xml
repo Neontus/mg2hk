@@ -28,6 +28,7 @@
     <setting file="file://$PROJECT_DIR$/pick_from_LMSAL.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ransac.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ransacunit.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/rebin.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/saveblank.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/temptest.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/test_align.py" root0="FORCE_HIGHLIGHTING" />

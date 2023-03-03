@@ -51,7 +51,7 @@ def obsid_raster2aia(obsid, raster=0, pattern=''):
     mm = date[4:6]
     dd = date[6:8]
 
-    dir_at_lmsal ='/irisa/data/level2/{}/{}/{}/{}/aia/'.format(yy,mm,dd,obsid)
+    dir_at_lmsal ='/sedna/ssw/irisa/data/level2/{}/{}/{}/{}/aia/'.format(yy,mm,dd,obsid)
     #print('/irisa/data/level2/{}/{}/{}/'.format(yy,mm,dd))
     print(dir_at_lmsal)	
 

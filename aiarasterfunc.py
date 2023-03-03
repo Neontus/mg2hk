@@ -11,13 +11,58 @@ from iris_lmsalpy import extract_irisL2data as ei
 #query_text = 'https://www.lmsal.com/hek/hcr?cmd=search-events3&outputformat=json&startTime=2013-07-20T00:00&stopTime=2023-01-20T00:00&minnumRasterSteps=100&hasData=true&minxCen=-400&maxxCen=400&minyCen=-400&maxyCen=400&hideMostLimbScans=true&limit=200'
 #list_urls = hcr2fits.get_fits(query_text)
 
-iris_filename = "/Users/jkim/Desktop/mg2hk/data/iris_l2_20230103_194208_3610108077_raster_t000_r00000.fits"
-aia_folder = "/Users/jkim/Desktop/mg2hk/data/iris_l2_20230103_194208_3610108077_SDO/"
+obsid = '20230103_194208_3610108077'
+
+# iris_filename = "/Users/jkim/Desktop/mg2hk/data/iris_l2_20230103_194208_3610108077_raster_t000_r00000.fits"
+# aia_folder = "/Users/jkim/Desktop/mg2hk/data/iris_l2_20230103_194208_3610108077_SDO/"
+
+iris_filename = pick_from_LMSAL.obsid_raster(obsid)[0]
+aia_file = pick_from_LMSAL.obsid_raster2aia(obsid, '335')[0]
+# change to 1600
+
 
 def closest_time(iris_time, aia_times):
-	differences = [abs(parse(iris_time) - parse(aia_time)) for aia_time in aia_times]
+	differences = [abs(iris_time - aia_time) for aia_time in aia_times]
 	# print("time difference: ", min(differences))
 	return differences.index(min(differences))
+
+class iris2aia:
+	def __init__(self, t_iris, x_iris, i_aia):
+		self.iris_time = t_iris
+		self.iris_x = x_iris
+		self.aia_time_index = i_aia
+
+	def add_aia_x(self, x_aia):
+		self.aia_x = x_aia
+
+	# find where IRIS slit would be at aia_time
+	# capture this column from aia image, put into final raster
+
+
+# for i, it in enumerate(iris_t_s):
+# 	ob = iris2aia(it, stepx[i], closest_time(it, aia_time2iris))
+# 	interp.append(ob)
+
+
+class aia2iris:
+	def __init__(self, t_aia, x_aia, t_iris):
+
+
+	def calc_adjusted(self, ):
+		# if current iris x is before aia time
+
+		dx = fx-ix #difference in iris xs before and after aia_time
+		dt1 = ft-it #difference in iris ts before and after aia time
+		dt2 = at-it #differnece between aia time and iris time (aia_time > iris_time)
+		new_iris_x = self.iris_x
+
+	# for each aia image, generate heliox range
+	#  heliox_aia = (np.arange(aia_header['NAXIS1'])-  (aia_header['NAXIS1']/2.))*aia_header['CDELT1'] + xceni[j]
+	# this should become 2d array: x axis time, yaxis heliox
+	# then, interpolate x axis to iris times
+	# then, find closest heliox to iris cenix
+	# then, take this value from AIA image and put into final raster
+
 
 def new_load():
 	numraster = 0
@@ -29,7 +74,6 @@ def new_load():
 	# except:
 	# 	print("error")
 	# 	exit(0)
-
 	iris_file = iris_filename
 
 	hdr_iris_data = ei.only_header(iris_file)
@@ -59,28 +103,36 @@ def new_load():
 
 	hiris, wiris = new_iris_data.shape
 	extent_iris = [xcen_iris - wiris / 2, xcen_iris + wiris / 2, ycen_iris - hiris / 2, ycen_iris + hiris / 2]
+
 	# print(extent_iris)
 
-	aia_data = []
+	# aia_data = []
+	#
+	# for aia_file in os.listdir(aia_folder):
+	# 	aia_img, aia_header = my_fits.read(aia_folder+aia_file)
+	# 	aia_time = aia_header['DATE_OBS']
+	# 	aia_xcen, aia_ycen, aia_xfov, aia_yfov = aia_header['XCEN'], aia_header['YCEN'], aia_header['FOVX'], aia_header['FOVY']
+	# 	low_x, high_x, low_y, high_y = aia_xcen - aia_xfov / 2, aia_xcen + aia_xfov / 2, aia_ycen - aia_yfov / 2, aia_ycen + aia_yfov / 2
+	# 	extent_aia = [low_x, high_x, low_y, high_y]
+	#
+	# 	aia_data.append({
+	# 		'time': aia_time,
+	# 		'img': aia_img,
+	# 		'extent': extent_aia
+	# 	})
 
-	for aia_file in os.listdir(aia_folder):
-		aia_img, aia_header = my_fits.read(aia_folder+aia_file)
-		aia_time = aia_header['DATE_OBS']
-		aia_xcen, aia_ycen, aia_xfov, aia_yfov = aia_header['XCEN'], aia_header['YCEN'], aia_header['FOVX'], aia_header['FOVY']
-		low_x, high_x, low_y, high_y = aia_xcen - aia_xfov / 2, aia_xcen + aia_xfov / 2, aia_ycen - aia_yfov / 2, aia_ycen + aia_yfov / 2
-		extent_aia = [low_x, high_x, low_y, high_y]
+	t_iris = iris_raster.raster['Mg II k 2796']['date_time_acq_in_seconds']
 
-		aia_data.append({
-			'time': aia_time,
-			'img': aia_img,
-			'extent': extent_aia
-		})
+
 
 	time_dict = dict(zip(iris_times, [closest_time(t, [d['time'] for d in aia_data]) for t in iris_times]))
 
 	for i, t in enumerate(time_dict):
 		aia = aia_data[time_dict[t]]
-		print(aia['img'].shape)
+		padding = 20
+		croph = hiris + padding
+		dim_aia = aia['img'].shape
+		slit = aia['img'][dim_aia[0]-1, yc-hiris:yc+hiris, :]
 
 
 
