@@ -32,9 +32,6 @@ class iris2aia:
 		self.iris_x = x_iris
 		self.aia_time_index = i_aia
 
-	def add_aia_x(self, x_aia):
-		self.aia_x = x_aia
-
 	# find where IRIS slit would be at aia_time
 	# capture this column from aia image, put into final raster
 
