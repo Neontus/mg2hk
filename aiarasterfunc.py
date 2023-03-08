@@ -40,6 +40,11 @@ class iris2aia:
 # 	ob = iris2aia(it, stepx[i], closest_time(it, aia_time2iris))
 # 	interp.append(ob)
 
+#display iris_map
+# wl_iris = iris_raster.raster['MG II k 2796'].wl
+# pos = ei.get_ori_val(wl_iris, 2794.)
+# iris_map = iris_raster.raster['Mg II k 2796'].data[:,:,pos]
+# ax[1].imshow(iris_map, vmin=0, vmax=500)
 
 class aia2iris:
 	def __init__(self, t_aia, x_aia, t_iris):
@@ -52,6 +57,17 @@ class aia2iris:
 		dt1 = ft-it #difference in iris ts before and after aia time
 		dt2 = at-it #differnece between aia time and iris time (aia_time > iris_time)
 		new_iris_x = self.iris_x
+
+	aia2iris = np.zeros([aia_img[0],iris_raster.shape[1])
+
+	heliox_aia = []
+	for h in range(aia_img['NAXIS3']-start_iris2aia):
+	     j = h + start_iris2aia
+	     heliox_aia = (np.arange(aia_header['NAXIS1'])-  (aia_header['NAXIS1']/2.))*aia_header['CDELT1'] + xceni[j]
+	     for k, xiris in enumerate(iris_raster.XCENI):
+	          pos_aia = np.argmin(np.abs(heliox_aia-xiris))
+	          aia2iris[:,k] = aia_img[:,pos_aia,j]
+
 
 	# for each aia image, generate heliox range
 	#  heliox_aia = (np.arange(aia_header['NAXIS1'])-  (aia_header['NAXIS1']/2.))*aia_header['CDELT1'] + xceni[j]
