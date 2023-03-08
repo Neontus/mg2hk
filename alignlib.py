@@ -23,14 +23,18 @@ import rebin
 #updated align function
 def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
 
-    blurredaia = lee_filter(aia, blurFilter)
-    blurrediris = lee_filter(iris, blurFilter)
+
+    aiag = cv2.cvtColor(aia, cv2.COLOR_BGR2GRAY)
+    irisg = cv2.cvtColor(iris, cv2.COLOR_BGR2GRAY)
+
+    blurredaia = lee_filter(aiag, blurFilter)
+    blurrediris = lee_filter(irisg, blurFilter)
 
     fig, ax = plt.subplots(1, 2, figsize=[10,10])
-    ax[0].imshow(aia)
-    ax[1].imshow(iris)
+    ax[0].imshow(aiag)
+    ax[1].imshow(irisg)
     plt.show()
-    print("SIZE AFTER BLUR", aia.shape, iris.shape)
+    print("SIZE AFTER BLUR", aiag.shape, irisg.shape)
 
 
     # sift = cv2.SIFT_create()
@@ -38,16 +42,14 @@ def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
     # kpsB, descsB = sift.detectAndCompute(iris, None)
 
     orb = cv2.ORB_create()
-    kpsA = orb.detect(aia, None)
-    kpsB = orb.detect(iris, None)
+    kpsA = orb.detect(aiag, None)
+    kpsB = orb.detect(irisg, None)
 
-    kpsA, descsA = orb.compute(aia, kpsA)
-    kpsB, descsB = orb.compute(iris, kpsB)
-
+    kpsA, descsA = orb.compute(aiag, kpsA)
+    kpsB, descsB = orb.compute(irisg, kpsB)
 
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descsA,descsB,k=2)
-
 
     good = []
     for m,n in matches:
@@ -71,8 +73,6 @@ def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
     inversetra = cv2.invertAffineTransform(M[0])
     (h, w) = iris.shape[:2]
 
-
-
     if debug:
         # matching keypoints
         matchedVis = cv2.drawMatchesKnn(aia, kpsA, iris, kpsB,
@@ -81,7 +81,7 @@ def align(aia, iris, debug = False, num_max_points=3, blurFilter = 3):
         cv2.imshow("Matched Keypoints", matchedVis)
         cv2.waitKey(0)
 
-    print("aia dimensions: ", aia.shape)
+    print("aia dimensions: ", aiag.shape)
     print("done aligning")
 
     return M[0], w, h
