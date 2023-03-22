@@ -369,6 +369,42 @@ def censure_ransac(aia, iris, debug = False):
 
     return H, iris.shape[1], iris.shape[0]
 
+class falign():
+    def __init__(self, aia, iris):
+        self.aia = aia
+        self.iris = iris
+
+    def coalign(self):
+        aia_n = 0.214265
+        iris_n = 0.241511
+        blur = 25.420002
+
+        AIA_THRESH = get_top_n(self.aia, aia_n)
+        IRIS_THRESH_L = get_top_n(self.iris, iris_n)
+        IRIS_THRESH_H = 450.025
+
+        aia_to_align = ((self.aia > AIA_THRESH) * 255).astype(np.uint8)
+        iris_to_align = cv2.normalize(lee_filter((imgthr(self.iris, IRIS_THRESH_L, IRIS_THRESH_H) * 255), blur), None,
+                                      0, 255, cv2.NORM_MINMAX).astype('uint8')
+
+        matrix, walign, halign = sift_ransac(aia_to_align, iris_to_align, debug=False)
+
+        # print("check: ", matrix, walign, halign)
+
+        if matrix is not None:
+            aligned_color_aia = cv2.warpAffine(self.aia, matrix, (walign, halign))
+            error = mse(aligned_color_aia, self.iris)
+            return aligned_color_aia, matrix, error
+
+        else:
+            return "error, bad initial guess or data"
+
+
+    def nm_minimize(self):
+        res = minimize(self.do_alignment, x0=[self.guess_aia_N, self.guess_iris_N, self.guess_blur], method='Nelder-Mead', tol=1e-2)
+        # print("RESULT: ", res)
+        return res
+
 class super_align():
     def __init__(self, aia, iris, guess_aia_N, guess_iris_N, guess_blur):
         self.aia = aia
