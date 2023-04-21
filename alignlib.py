@@ -251,9 +251,9 @@ def get_top_n(img, n):
 
     return thr
 
-def manual_align(aiao, iriso):
-    aia = cv2.cvtColor(aiao, cv2.COLOR_GRAY2BGR)
-    iris = cv2.cvtColor(iriso, cv2.COLOR_GRAY2BGR)
+def manual_align(aia, iris):
+    #aia = cv2.cvtColor(aiao, cv2.COLOR_GRAY2BGR)
+    #iris = cv2.cvtColor(iriso, cv2.COLOR_GRAY2BGR)
 
     def detectClick(event, x, y, flags, params):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -314,9 +314,9 @@ import skimage
 from skimage.feature import ORB, match_descriptors, SIFT, plot_matches
 from skimage import transform
 
-def sift_ransac(aia, iris, debug = False):
+def sift_ransac(aia, iris, debug = False, **kwargs):
     # print(aia.shape, iris.shape)
-    sift = SIFT()
+    sift = SIFT(**kwargs)
     sift.detect_and_extract(aia)
     kpsa, descsa = sift.keypoints, sift.descriptors
     sift.detect_and_extract(iris)
@@ -374,7 +374,8 @@ class falign():
         self.aia = aia
         self.iris = iris
 
-    def coalign(self):
+    def coalign(self, **kwargs):
+#   def coalign(self, IRIS_THRESH_L, IRIS_THRESH_H, AIA_THRESH_L, AIA_THRESH_H):
         aia_n = 0.214265
         iris_n = 0.241511
         blur = 25.420002
@@ -382,12 +383,22 @@ class falign():
         AIA_THRESH = get_top_n(self.aia, aia_n)
         IRIS_THRESH_L = get_top_n(self.iris, iris_n)
         IRIS_THRESH_H = 450.025
+#        print(IRIS_THRESH_L, IRIS_THRESH_H)
 
         aia_to_align = ((self.aia > AIA_THRESH) * 255).astype(np.uint8)
         iris_to_align = cv2.normalize(lee_filter((imgthr(self.iris, IRIS_THRESH_L, IRIS_THRESH_H) * 255), blur), None,
                                       0, 255, cv2.NORM_MINMAX).astype('uint8')
+#        aux = self.aia*0
+#        w = np.where((self.aia > AIA_THRESH_L) & (self.aia < AIA_THRESH_H))
+#        a#ux[w] = 1
+#        aia_to_align = ((self.aia*aux) * 255).astype(np.uint8)
+#        aux = self.iris*0
+#        w = np.where((self.iris > IRIS_THRESH_L) & (self.iris < IRIS_THRESH_H))
+#        aux[w] = 1
+#        iris_to_align = cv2.normalize(self.iris*aux*255, None,
+#                                      0, 255, cv2.NORM_MINMAX).astype('uint8')
 
-        matrix, walign, halign = sift_ransac(aia_to_align, iris_to_align, debug=False)
+        matrix, walign, halign = sift_ransac(aia_to_align, iris_to_align, debug=True, **kwargs)
 
         # print("check: ", matrix, walign, halign)
 
@@ -552,6 +563,14 @@ def load(obsid):
     cut_aia = new_aia[y_f:y_i, x_i:x_f]
 
     return new_iris_data, cut_aia
+
+def avg_diff(l):
+    lc = l.copy()
+    lc.sort()
+    dl = []
+    for i in range(1, len(lc)-1):
+        dl.append(lc[i]-lc[i-1])
+    return sum(dl)/len(dl)
 
 #visualizing
 import numpy as np

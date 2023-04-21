@@ -89,8 +89,17 @@ h_iris_arcsec = extent_iris_arcsec[3] + yu + yd
 col_h_px = h_iris_arcsec/aia_yscl
 aia_mid_y_px = (aia_main[0].shape[1]+pyu-pyd)/2
 
-raster = np.zeros((round(h_iris_arcsec/aia_yscl), len(interp)))
+raster = np.zeros((round(aia_main[0].shape[1]/ 2), len(interp)))
+#raster = np.zeros((math.floor(extent_iris_arcsec[3]/aia_yscl), len(interp)))
+# fix issue of using int or round or ceil or floor depending on offset
+# currently:
+# 0 offset: int, some offset: round, 0 offset + correlate: round, some offset + correlate:
 #raster = np.zeros((aia_main[0].shape[1], len(interp)))
+
+xs = []
+ys = []
+zs = []
+ls = []
 
 for i, iris_obs in enumerate(interp):
 	closest_aia_time = aia_time2iris[iris_obs.aia_time_index]
@@ -121,13 +130,41 @@ for i, iris_obs in enumerate(interp):
 	#	raster_col = aia_main[0][iris_obs.aia_time_index, :, round(coi):round(coi) + 1].ravel()
 
 	if correlate:
-		x = signal.resample(iris_map[:, i], round(len(iris_map) * iris_yscl / aia_yscl))
-		y = raster_col
-		correlation = signal.correlate(x, y, mode="full")
-		lags = signal.correlation_lags(x.size, y.size, mode="full")
+
+		x = signal.resample(iris_map[:, i], math.floor(len(iris_map) * iris_yscl / aia_yscl))
+		#y = raster_col
+		#max_offset = y.shape[0]-x.shape[0]
+		z = raster_col[round(aia_mid_y_px - col_h_px / 2):round(aia_mid_y_px + col_h_px / 2)]
+
+		correlation = signal.correlate(x-np.mean(x), z-np.mean(z), mode="full")
+		lags = signal.correlation_lags(x.size, z.size, mode="full")
 		lag = lags[np.argmax(correlation)]
 
-		fraster_col = raster_col[-lag:round(col_h_px)-lag-1]
+		max_offset = z.shape[0]-x.shape[0]
+		#max_offset = 0
+
+		newmid = z.shape[0] / 2
+		newh = extent_iris_arcsec[3] / aia_yscl
+
+		if abs(lag) > max_offset or lag > 0:
+			ls.append(False)
+			fraster_col = z[round(newmid - newh / 2):round(newmid + newh / 2)]
+		# elif lag > 0:
+		# 	print(lag)
+		# 	ls.append(True)
+		#
+		# 	fraster_col = np.insert(z[0:math.floor(extent_iris_arcsec[3]/aia_yscl)-lag], 0, [0]*lag)
+
+			#fraster_col = raster_col[lag:round(col_h_px)+lag]
+			#fraster_col = np.insert(z[0:round(col_h_px)-lag], 0, [0]*lag)
+		elif lag < 0:
+			print(lag)
+			ls.append(True)
+
+			fraster_col = z[-lag:math.floor(newh)-lag]
+
+			#fraster_col = z[-lag:round(col_h_px)-lag]
+			#fraster_col = raster_col[-lag:round(col_h_px)-lag]
 
 	else:
 		# dy_arc = iris_obs.iris_y-iris_ycen
@@ -140,7 +177,7 @@ for i, iris_obs in enumerate(interp):
 
 
 
-		#taking middle of aia picture (old approach)
+		#taking middle of aia picture (stable approach)
 		fraster_col = aia_main[0][iris_obs.aia_time_index,round(aia_mid_y_px - col_h_px / 2):round(aia_mid_y_px + col_h_px / 2),round(coi):round(coi) + 1].ravel()
 
 	raster[:,i] = fraster_col

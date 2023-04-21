@@ -42,6 +42,21 @@ def obsid_raster(obsid, raster=0):
 
     return out
 
+def obsid_sji(obsid, raster=0, pattern=''):
+
+    pos = 0
+    date = obsid[:8]
+    yy = date[0:4]
+    mm = date[4:6]
+    dd = date[6:8]
+
+    dir_at_lmsal ='/irisa/data/level2/{}/{}/{}/{}/'.format(yy,mm,dd,obsid)
+    #print('/irisa/data/level2/{}/{}/{}/'.format(yy,mm,dd))
+
+    out = find.find(dir_at_lmsal, '*{0}*SJI_{1}_t*.fits'.format(obsid, pattern))
+
+    return out
+
 
 def obsid_raster2aia(obsid, raster=0, pattern=''):
 
