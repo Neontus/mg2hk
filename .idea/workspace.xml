@@ -30,7 +30,9 @@
     <setting file="file://$PROJECT_DIR$/ransac.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ransacunit.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/rebin.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/s2acom.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/s2astable.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/s2aunit.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/saveblank.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/sji2aia.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/sji2aialocal.py" root0="FORCE_HIGHLIGHTING" />

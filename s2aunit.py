@@ -12,6 +12,7 @@ from alignlib import falign, avg_diff
 from dateutil import parser
 import cv2 as cv
 import argparse
+import saveblank
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-o", "--obsid", required=True,
@@ -158,6 +159,7 @@ iris_to_align = rebin.congrid(iris_map, new_iris_shape)
 
 ax[0].imshow(raster, origin='lower'); ax[0].set_title('synthetic sji-aligned aia raster')
 ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title('aiapx-scaled iris map')
+saveblank.saveblank('/Users/jkim/Desktop/mg2hk/s2aoutput/', obsid)
 
 # # masking iris map
 # # plt.imshow(np.ma.masked_where(np.invert(mask), iris_map), vmin=90, vmax=300, origin='lower', extent=extent_iris_arcsec)

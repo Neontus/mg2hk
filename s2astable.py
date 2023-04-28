@@ -13,7 +13,7 @@ from dateutil import parser
 import cv2 as cv
 
 
-obsid = '20230103_194208_3610108077'
+obsid = '20230404_030531_3400109477'
 
 path = pick_from_LMSAL.obsid_raster2aia(obsid, pattern='1600')[0]
 aia_main = my_fits.read(path, ext=0)
