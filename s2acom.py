@@ -11,18 +11,15 @@ for obs in lobsid:
 	os.system('python3 s2aunit.py -o {}'.format(obs))
 
 # new stuff
-
 import re
+with open('/Users/jkim/Downloads/query.txt', 'r') as f:
+   n = f.readlines()
+   f.close()
+obsids = [re.findall(r'\/(\d*_\d*_\d*)\/', o)[0] for o in n]
+
 import os
 for obs in obsids:
 	try:
 		os.system('python3 s2aunit.py -o {}'.format(obs))
 	except:
 		print("error: ", obs)
-
-obsids = [o[:-1] for o in n]
-
-with open('/Users/jkim/Downloads/query.txt', 'r') as f:
-   n = f.readlines()
-
-f.close()
