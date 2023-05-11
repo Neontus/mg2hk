@@ -105,12 +105,12 @@ def template_match(aia_index, sji_img):
 xcenters = []
 ycenters = []
 
-offset = int((sji1400.data.shape[1]-(avg_diff(slitx))*sji1400.data.shape[2])/2)
+offset = int((sji1400.data.shape[1]-(avg_diff(slitx))*sji1400.data.shape[2])/2) #px
 #offset = 230
-l_iris =len(t_iris)
-sji_period = l_iris/sji1400.data.shape[2]
+l_iris =len(t_iris) #count of iris slits
+sji_period = l_iris/sji1400.data.shape[2] #how many slits between each sji image = num of filters??
 
-scaled_shape_s2a = (sji1400.data.shape[0]*sji_yscl/aia_yscl, offset*2*sji_xscl/aia_xscl)
+scaled_shape_s2a = (sji1400.data.shape[0]*sji_yscl/aia_yscl, offset*2*sji_xscl/aia_xscl) #sji, shape scaled from sji scale to aia scale 0.6"/px
 
 for i, x in enumerate(slitx):
     nx = round(x)
@@ -119,7 +119,7 @@ for i, x in enumerate(slitx):
     aia_index = closest_time(sjit, aia_time2iris)
     interp.append(sji2aia(s, t_sji[i], aia_index))
 
-    scaled_img = rebin.congrid(s, scaled_shape_s2a) # slit is not slitx anymore, now it is middle column
+    scaled_img = rebin.congrid(s, scaled_shape_s2a) # slit is not slitx anymore, now it is middle column, scaled to aia scale
     cenx, ceny = template_match(aia_index, scaled_img)
     xcenters.append(cenx)
     ycenters.append(ceny)
@@ -134,7 +134,7 @@ x = np.arange(0, l_iris, sji_period)
 f = interpolate.interp1d(x, ycenters, fill_value = "extrapolate")
 newycenters = f(np.arange(l_iris))
 
-raster = np.zeros((int(scaled_shape_s2a[0]), len(newxcenters)))
+raster = np.zeros((int(scaled_shape_s2a[0]), len(newxcenters))) # aia scale y, count of iris slits x
 
 for i, (xcen, ycen) in enumerate(zip(newxcenters, newycenters)):
 	aia_i = interp0[i].aia_time_index
@@ -150,7 +150,7 @@ fig.suptitle('OBSID: '+obsid)
 
 #scale iris array to same as aia using scales
 new_iris_shape = (iris_map.shape[0]*iris_yscl/aia_yscl, len(newxcenters))
-iris_to_align = rebin.congrid(iris_map, new_iris_shape)
+iris_to_align = rebin.congrid(iris_map, raster.shape)
 
 ax[0].imshow(raster, origin='lower'); ax[0].set_title('synthetic sji-aligned aia raster')
 ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title('aiapx-scaled iris map')
@@ -161,4 +161,6 @@ ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title(
 # masked_iris_map = np.ma.masked_where(np.invert(mask), iris_map)
 # fin_iris_map = masked_iris_map[~np.isnan(masked_iris_map).all(axis=1)]
 
-
+final_s2a_shape = (scaled_shape_s2a[0], abs(iris_map.shape[1]*iris_xscl/aia_xscl)) #final scaled shape in aia scale
+final_raster = rebin.congrid(raster, final_s2a_shape)
+final_iris = rebin.congrid(iris_map, final_s2a_shape)

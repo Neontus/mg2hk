@@ -29,7 +29,7 @@ aia_yscl = aia_main[1]['CDELT2']
 
 ## iris work
 iris_file = pick_from_LMSAL.obsid_raster(obsid, raster=0)[0]
-iris_raster = ei.load(iris_file)
+iris_raster = ei.load(iris_file, verbose = False)
 # hiris, wiris = iris_raster.raster['Mg II k 2796']['extent_heliox_helioy'][3]-iris_raster.raster['Mg II k 2796']['extent_heliox_helioy'][2], iris_raster.raster['Mg II k 2796']['extent_heliox_helioy'][1]-iris_raster.raster['Mg II k 2796']['extent_heliox_helioy'][0]
 # start_iris2aia = np.argmin(np.abs(aia_extra[0][:,0]))
 iris_t_s = iris_raster.raster['Mg II k 2796'].date_time_acq_in_seconds
@@ -46,7 +46,7 @@ extent_iris_arcsec = iris_raster.raster['Mg II k 2796'].extent_arcsec_arcsec
 
 ## sji work
 sji_path = pick_from_LMSAL.obsid_sji(obsid, pattern='1400')[0]
-sji = ei.load(sji_path)
+sji = ei.load(sji_path, verbose = False)
 sji1400 = sji.SJI['SJI_1400']
 slitx = sji1400.SLTPX1IX
 t_sji = sji1400.date_time_acq
@@ -157,9 +157,14 @@ fig.suptitle('OBSID: '+obsid)
 new_iris_shape = (iris_map.shape[0]*iris_yscl/aia_yscl, len(newxcenters))
 iris_to_align = rebin.congrid(iris_map, new_iris_shape)
 
-ax[0].imshow(raster, origin='lower'); ax[0].set_title('synthetic sji-aligned aia raster')
-ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title('aiapx-scaled iris map')
-saveblank.saveblank('/Users/jkim/Desktop/mg2hk/s2aoutput/', obsid)
+#unncomment later
+#ax[0].imshow(raster, origin='lower'); ax[0].set_title('synthetic sji-aligned aia raster')
+#ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title('aiapx-scaled iris map')
+#saveblank.saveblank('/Users/jkim/Desktop/mg2hk/s2aoutput/', obsid)
+
+final_s2a_shape = (scaled_shape_s2a[0], abs(iris_map.shape[1]*iris_xscl/aia_xscl)) #final scaled shape in aia scale
+final_raster = rebin.congrid(raster, final_s2a_shape)
+final_iris = rebin.congrid(iris_map, final_s2a_shape)
 
 # # masking iris map
 # # plt.imshow(np.ma.masked_where(np.invert(mask), iris_map), vmin=90, vmax=300, origin='lower', extent=extent_iris_arcsec)
