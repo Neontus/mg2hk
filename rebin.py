@@ -27,7 +27,7 @@ def rebin(arr, new_shape, mio=False):
         print('Mio is done')
         in_shape = arr.shape
         shape = (new_shape[0], np.round(arr.shape[0]//new_shape[0]) or 1,
-                 new_shape[1], np.round(arr.shape[1]//new_shape[1]) or 1)
+                 new_shape[1], np.round(arr.shape[1]//new_shape[1])      or 1)
         #print('New... ', shape)
         return arr[0:shape[0]*shape[1]*shape[2]*shape[3]].reshape(np.round(shape)).mean(-1).mean(1)
         #print(arr[0:shape[0]*shape[1]*shape[2]*shape[3]].reshape(np.round(shape)).shape)

@@ -15,11 +15,11 @@ import re
 with open('/Users/jkim/Downloads/query.txt', 'r') as f:
    n = f.readlines()
    f.close()
-obsids = [re.findall(r'\/(\d*_\d*_\d*)\/', o)[0] for o in n]
+obsids = [re.findall(r'\/(\d*_\d*_\d*)\/', o) for o in n][0]
 
 import os
-for obs in obsids:
+for a in np.unique(obsids):
 	try:
-		os.system('python3 s2aunit.py -o {}'.format(obs))
+		os.system('python3 s2adatacubeunit.py -o {}'.format(a))
 	except:
-		print("error: ", obs)
+		print("error: ", a)
