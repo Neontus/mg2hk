@@ -37,8 +37,11 @@ def obsid_raster(obsid, raster=0):
 
     dir_at_lmsal ='/irisa/data/level2/{}/{}/{}/{}/'.format(yy,mm,dd,obsid)
     #print('/irisa/data/level2/{}/{}/{}/'.format(yy,mm,dd))
-
-    out = find.find(dir_at_lmsal, '*{0}*raster*_r{1:05d}.fits'.format(obsid, raster))
+    
+    if raster >= 0:
+        out = find.find(dir_at_lmsal, '*{0}*raster*_r{1:05d}.fits'.format(obsid, raster))
+    else:
+        out = find.find(dir_at_lmsal, '*{0}*raster*_r*.fits'.format(obsid))
 
     return out
 

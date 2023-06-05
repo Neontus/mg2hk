@@ -13,7 +13,8 @@ from dateutil import parser
 import cv2 as cv
 
 
-obsid = '20230404_030531_3400109477'
+#obsid = '20230404_030531_3400109477' backwards?
+obsid = '20230414_133815_3620108076'
 
 path = pick_from_LMSAL.obsid_raster2aia(obsid, pattern='1600')[0]
 aia_main = my_fits.read(path, ext=0)
@@ -134,7 +135,7 @@ x = np.arange(0, l_iris, sji_period)
 f = interpolate.interp1d(x, ycenters, fill_value = "extrapolate")
 newycenters = f(np.arange(l_iris))
 
-raster = np.zeros((int(scaled_shape_s2a[0]), len(newxcenters))) # aia scale y, count of iris slits x
+raster = np.zeros((int(scaled_shape_s2a[0]), len(newxcenters))) # aia scale y, count of iris px x
 
 for i, (xcen, ycen) in enumerate(zip(newxcenters, newycenters)):
 	aia_i = interp0[i].aia_time_index
@@ -150,7 +151,7 @@ fig.suptitle('OBSID: '+obsid)
 
 #scale iris array to same as aia using scales
 new_iris_shape = (iris_map.shape[0]*iris_yscl/aia_yscl, len(newxcenters))
-iris_to_align = rebin.congrid(iris_map, raster.shape)
+iris_to_align = rebin.congrid(iris_map, new_iris_shape)
 
 ax[0].imshow(raster, origin='lower'); ax[0].set_title('synthetic sji-aligned aia raster')
 ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title('aiapx-scaled iris map')
@@ -163,4 +164,5 @@ ax[1].imshow(iris_to_align, vmin=90, vmax=300, origin='lower'); ax[1].set_title(
 
 final_s2a_shape = (scaled_shape_s2a[0], abs(iris_map.shape[1]*iris_xscl/aia_xscl)) #final scaled shape in aia scale
 final_raster = rebin.congrid(raster, final_s2a_shape)
-final_iris = rebin.congrid(iris_map, final_s2a_shape)
+i2a_shape = (iris_map.shape[0]*iris_yscl/aia_yscl, iris_map.shape[1]*iris_xscl/aia_xscl) # final scaled shape of iris_map to aia
+final_iris = rebin.congrid(iris_map, i2a_shape)
