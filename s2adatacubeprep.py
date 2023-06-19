@@ -14,8 +14,21 @@ from dateutil import parser
 import cv2 as cv
 from s2alib import iris2aia, closest_time, sji2aia, template_match
 
-#obsid = '20230415_121039_3400109477'
-obsid = '20230515_193520_3620112077'
+# obsid = '20230415_121039_3400109477'
+# obsid = '20230515_193520_3620112077'
+# obsid = '20220111_012752_3620108076' ehhh
+# obsid = '20230509_042004_3882010194' low res??
+# obsid = '20230508_182225_3660109102' error
+# obsid = '20230411_211053_3400107460' error
+# obsid = '20230412_080000_3600100038' error/low res
+# obsid = '20230415_082731_3400509477' weird
+# obsid = '20230326_040549_3882010194' error
+# obsid = '20230327_001440_3660259103' error
+# obsid = '20230329_155201_3400113362'
+# obsid = '20230404_030531_3400109477'
+# obsid = '20221205_211856_3620104077'
+# obsid = '20200402_060504_3610108077'
+obsid = '20230218_012527_3620108076'
 
 path = pick_from_LMSAL.obsid_raster2aia(obsid, pattern='1600')[0]
 aia_main = my_fits.read(path, ext=0)
@@ -82,7 +95,7 @@ aux = aia_main[0].copy()
 
 for i in range(len(iris_t_s)):
 	closest_sji = closest_time(iris_t_s[i], sjit_t_s)
-	print(i, closest_sji)
+	# print(i, closest_sji)
 	x = slitx[closest_sji]
 	nx = round(x)
 	s = sji1400.data[:,nx-offset:nx+offset,closest_sji]
@@ -98,7 +111,7 @@ for i in range(len(iris_t_s)):
 	scaled_img = rebin.congrid(s, scaled_shape_s2a) # slit is not slitx anymore, now it is middle column, scaled to aia scale
 	#cenx, ceny = template_match(aia_main, aia_index, scaled_img)
 	cenx, ceny = template_match(aux, aia_index, scaled_img)
-	print(i, iris_t_s[i], aia_time2iris[aia_index], aia_index, cenx, ceny)
+	# print(i, iris_t_s[i], aia_time2iris[aia_index], aia_index, cenx, ceny)
 	xcenters.append(cenx)
 	ycenters.append(ceny)
 
@@ -167,7 +180,7 @@ for i, channel in enumerate(channels):
 	rasters.append(rebin.congrid(araster, final_s2a_shape))
 
 ts = [final_iris, final_raster] + rasters
-norm = [arr/np.max(arr[:,:])*255 for arr in ts]
+# norm = [arr/np.max(arr[:,:])*255 for arr in ts]
 
 # inversion
 output = iris2.invert(iris_file)
@@ -188,10 +201,21 @@ final_inv = []
 for i in range(inv.shape[2]):
 	final_inv.append(rebin.congrid(inv[:,:,i], final_s2a_shape))
 
-data_cube = norm + final_inv
-to_save = np.transpose(np.stack(tuple(data_cube)), [1, 2, 0])
+data_cube = ts + final_inv
+
+m = rebin.congrid(mask, final_s2a_shape)>0.1
+w = np.where(m != 0)
+masked = [aux[w[0][0]:w[0][-1], w[1][0]:w[1][-1]] for aux in data_cube]
+
+normalizing_factor = [np.nanmax(x[:,:]) for x in masked]
+normalized = [arr/normalizing_factor[i]*255 for i,arr in enumerate(masked)]
+
+to_save = np.transpose(np.stack(tuple(normalized)), [1, 2, 0])
+tvg(to_save)
+
+np.savez('/Users/jkim/Desktop/mg2hk/to_send/data4PChIRIS2_{}.npz'.format(obsid), data = to_save, variables = ['iris_map_2794', 'aia_1600', 'aia_1700', 'aia_304', 'aia_193', 'aia_171', 'T (-5.2)', 'T (-4.2)', 'T (-3.2)', 'vlos (-5.2)', 'vlos (-4.2)', 'vlos (-3.2)', 'vturb (-5.2)', 'vturb (-4.2)', 'vturb (-3.2)', 'log(nne) (-5.2)', 'log(nne) (-4.2)', 'log(nne) (-3.2)', 'unc_T (-5.2)', 'unc_T (-4.2)', 'unc_T (-3.2)', 'unc_vlos (-5.2)', 'unc_vlos (-4.2)', 'unc_vlos (-3.2)', 'unc_vturb (-5.2)', 'unc_vturb (-4.2)', 'unc_vturb (-3.2)', 'unc_log(nne) (-5.2)', 'unc_log(nne) (-4.2)', 'unc_log(nne) (-3.2)'], mask = m, normalizing_factor = normalizing_factor)
+
 #with open('/Users/jkim/Desktop/mg2hk/to_send/aia2iris_iris_l2_{}.npy'.format(obsid), 'wb') as f:
 #	np.save(f, to_save)
 
 #to inspect
-tvg(to_save)
