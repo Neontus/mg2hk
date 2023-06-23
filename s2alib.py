@@ -56,7 +56,7 @@ def s2adatacubeassembly(obsid, dir_to_save):
 
 	#loading iris + iris variables
 	iris_path = pick_from_LMSAL.obsid_raster(obsid, raster=0)[0]
-	iris_raster = ei.load(iris_path)
+	iris_raster = ei.load(iris_path, radcal = 'CGS_NU') #try on samples
 	t_iris = iris_raster.raster['Mg II k 2796'].date_time_acq_in_seconds # time of each slit formatted in sec since begin of obs.
 	iris_xcenix = iris_raster.raster['Mg II k 2796'].XCENIX # center x-coord of slit
 	iris_ycenix = iris_raster.raster['Mg II k 2796'].YCENIX # center y-coord slit
@@ -199,7 +199,7 @@ def clean_outliers(outlier_obsids, data_cube_directory, dir_to_save):
 		nf = [data_cube['normalizing_factor'][ind] for ind in [0, 1, 2, 3, 6]]
 		
 		unn_iris = iris_map*nf[0]
-		q1, q3 = np.quantile(unn_iris.flatten(), [0.25, 0.85])
+		q1, q3 = np.quantile(unn_iris.flatten(), [0.25, 0.75])
 		iqr = q3-q1
 		ub = q3+iqr
 		outlier_mask = np.where(unn_iris>=ub)
