@@ -238,6 +238,23 @@ def prep_clean(clean_obsids, data_cube_directory, dir_to_save):
 		np.savez('{}xydata_{}.npz'.format(dir_to_save, obsid), x = x_stack, y = y, variables = ['x data - 1600, 1700, 304', 'y data - temp @ -5.2'], normalizing_factor = nf)
 		print("saved")
 
+def prep_clean_data_cubes(clean_obsids, data_cube_directory, dir_to_save):
+	for obsid in clean_obsids:
+		data_cube = np.load("{}data4PChIRIS2_{}.npz".format(data_cube_directory, obsid))
+		aia_1600 = data_cube['data'][:,:,1]
+		aia_1700 = data_cube['data'][:,:,2]
+		aia_304 = data_cube['data'][:,:,3]
+		aia_193 = data_cube['data'][:,:,4]
+		aia_171 = data_cube['data'][:,:,5]
+		temp_5_2 = data_cube['data'][:,:,6]
+		nf = [data_cube['normalizing_factor'][ind] for ind in [1, 2, 3, 4, 5, 6]]
+
+		x_stack = np.stack(tuple([aia_1600, aia_1700, aia_304, aia_193, aia_171]))
+		y = temp_5_2
+
+		np.savez('{}xydata_{}.npz'.format(dir_to_save, obsid), x = x_stack, y = y, variables = ['x data - 1600, 1700, 304, 193, 171', 'y data - temp @ -5.2'], normalizing_factor = nf)
+		print("saved")
+
 
 def checkpoint(message, variable):
 	print("_"*10+"CHECKPOINT"+"_"*10)
