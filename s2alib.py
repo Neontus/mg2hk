@@ -247,13 +247,15 @@ def prep_clean_data_cubes(clean_obsids, data_cube_directory, dir_to_save):
 		aia_193 = data_cube['data'][:,:,4]
 		aia_171 = data_cube['data'][:,:,5]
 		temp_5_2 = data_cube['data'][:,:,6]
-		nf = [data_cube['normalizing_factor'][ind] for ind in [1, 2, 3, 4, 5, 6]]
+		temp_4_2 = data_cube['data'][:,:,7]
+		temp_3_2 = data_cube['data'][:,:,8]
+		nf = [data_cube['normalizing_factor'][ind] for ind in [1, 2, 3, 4, 5, 6, 7, 8]]
 
 		x_stack = np.stack(tuple([aia_1600, aia_1700, aia_304, aia_193, aia_171]))
-		y = temp_5_2
+		y_stack = np.stack(tuple([temp_5_2, temp_4_2, temp_3_2]))
 
-		np.savez('{}xydata_{}.npz'.format(dir_to_save, obsid), x = x_stack, y = y, variables = ['x data - 1600, 1700, 304, 193, 171', 'y data - temp @ -5.2'], normalizing_factor = nf)
-		print("saved")
+		np.savez('{}xydata_{}.npz'.format(dir_to_save, obsid), x = x_stack, y = y_stack, variables = ['x data - 1600, 1700, 304, 193, 171', 'y data - temp @ -5.2, -4.2, -3.2'], normalizing_factor = nf)
+		print("saved - {}".format(obsid))
 
 
 def checkpoint(message, variable):
