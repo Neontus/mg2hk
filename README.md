@@ -3,28 +3,10 @@
 mg2hk is a lightweight, efficient tool designed to convert and process sji rasters to iris rasters. Built by Juno Kim under Alberto Sainz-Dalda's mentorship at Lockheed Martin 2022-2023.
 
 ## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
-
-## Overview
-
-The mg2hk project aims to bridge the gap between legacy MG file formats and modern HK-based systems. Whether you are integrating legacy data into current workflows or experimenting with new formats, mg2hk provides a straightforward interface with a range of options to customize your conversion process.
-
-Built with clear code and a modular design, this tool ensures that users can quickly get started and integrate it into their projects. The repository includes detailed usage examples, configuration options, and tests to help you understand and extend its functionality.
-
-## Features
-
-- **Seamless Conversion:** Automatically converts MG files to HK format with minimal intervention.
-- **Customizable Options:** Offers command-line flags to modify conversion parameters (e.g., file paths, conversion presets, verbose logging).
-- **Cross-Platform Compatibility:** Runs on major operating systems including Windows, macOS, and Linux.
-- **Modular Design:** Easily extend or integrate into larger workflows with clearly documented modules.
-- **Robust Error Handling:** Provides informative error messages and logging to troubleshoot conversion issues.
-- **Documentation & Examples:** Comes with comprehensive examples and inline documentation to assist new users.
 
 ## Installation
 
