@@ -60,6 +60,8 @@ Suggested Workflow:
 
 For dependency issues, try clean reinstall + pip install of requirements
 
+Code is based on proprietary LM codebase as of 2022/3, may use deprecated functions
+
 Otherwise, feel free to open issues at this link[https://github.com/Neontus/mg2hk/issues]
 
 ## License
